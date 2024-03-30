@@ -2085,13 +2085,7 @@
             <name>$PROJ_DIR$/../../../hal/atmega1281/src/halTimer.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$/../../../hal/atmega1281/src/halUart.c</name>
-          </file>
-          <file>
             <name>$PROJ_DIR$/../../../hal/atmega1281/src/hal.c</name>
-          </file>
-          <file>
-            <name>$PROJ_DIR$/../../../hal/atmega1281/src/halSleep.c</name>
           </file>
         </group>
         <group>
@@ -2100,19 +2094,13 @@
             <name>$PROJ_DIR$/../../../hal/atmega1281/inc/halGpio.h</name>
           </file>
           <file>
+            <name>$PROJ_DIR$/../../../hal/atmega1281/inc/hal.h</name>
+          </file>
+          <file>
             <name>$PROJ_DIR$/../../../hal/atmega1281/inc/halPhy.h</name>
           </file>
           <file>
             <name>$PROJ_DIR$/../../../hal/atmega1281/inc/halTimer.h</name>
-          </file>
-          <file>
-            <name>$PROJ_DIR$/../../../hal/atmega1281/inc/hal.h</name>
-          </file>
-          <file>
-            <name>$PROJ_DIR$/../../../hal/atmega1281/inc/halUart.h</name>
-          </file>
-          <file>
-            <name>$PROJ_DIR$/../../../hal/atmega1281/inc/halSleep.h</name>
           </file>
         </group>
       </group>
@@ -2131,10 +2119,16 @@
           <name>$PROJ_DIR$/../../../nwk/src/nwkRoute.c</name>
         </file>
         <file>
+          <name>$PROJ_DIR$/../../../nwk/src/nwkRouteDiscovery.c</name>
+        </file>
+        <file>
           <name>$PROJ_DIR$/../../../nwk/src/nwkSecurity.c</name>
         </file>
         <file>
           <name>$PROJ_DIR$/../../../nwk/src/nwkFrame.c</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/src/nwkGroup.c</name>
         </file>
         <file>
           <name>$PROJ_DIR$/../../../nwk/src/nwkDataReq.c</name>
@@ -2146,10 +2140,34 @@
       <group>
         <name>inc</name>
         <file>
-          <name>$PROJ_DIR$/../../../nwk/inc/nwkPrivate.h</name>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkTx.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkCommand.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkGroup.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkRouteDiscovery.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkRoute.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkDataReq.h</name>
         </file>
         <file>
           <name>$PROJ_DIR$/../../../nwk/inc/nwk.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkSecurity.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkFrame.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkRx.h</name>
         </file>
       </group>
     </group>

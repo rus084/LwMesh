@@ -3,7 +3,7 @@
  *
  * \brief Peer2Peer application implementation
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,10 +37,14 @@
  *
  * \asf_license_stop
  *
- * $Id: Peer2Peer.c 5245 2012-09-10 20:07:02Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: Peer2Peer.c 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
+/*- Includes ---------------------------------------------------------------*/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -49,33 +53,28 @@
 #include "phy.h"
 #include "sys.h"
 #include "nwk.h"
-#include "halUart.h"
-#include "halSleep.h"
 #include "sysTimer.h"
-#include "leds.h"
+#include "halBoard.h"
+#include "halUart.h"
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Definitions ------------------------------------------------------------*/
 #ifdef NWK_ENABLE_SECURITY
-  #define APP_BUFFER_SIZE     NWK_MAX_SECURED_PAYLOAD_SIZE
+  #define APP_BUFFER_SIZE     (NWK_MAX_PAYLOAD_SIZE - NWK_SECURITY_MIC_SIZE)
 #else
   #define APP_BUFFER_SIZE     NWK_MAX_PAYLOAD_SIZE
 #endif
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Types ------------------------------------------------------------------*/
 typedef enum AppState_t
 {
   APP_STATE_INITIAL,
   APP_STATE_IDLE,
 } AppState_t;
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Prototypes -------------------------------------------------------------*/
 static void appSendData(void);
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Variables --------------------------------------------------------------*/
 static AppState_t appState = APP_STATE_INITIAL;
 static SYS_Timer_t appTimer;
 static NWK_DataReq_t appDataReq;
@@ -84,16 +83,17 @@ static uint8_t appDataReqBuffer[APP_BUFFER_SIZE];
 static uint8_t appUartBuffer[APP_BUFFER_SIZE];
 static uint8_t appUartBufferPtr = 0;
 
-/*****************************************************************************
+/*- Implementations --------------------------------------------------------*/
+
+/*************************************************************************//**
 *****************************************************************************/
 static void appDataConf(NWK_DataReq_t *req)
 {
   appDataReqBusy = false;
-  appSendData();
   (void)req;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void appSendData(void)
 {
@@ -102,8 +102,7 @@ static void appSendData(void)
 
   memcpy(appDataReqBuffer, appUartBuffer, appUartBufferPtr);
 
-  //appDataReq.dstAddr = 1-APP_ADDR;
-  appDataReq.dstAddr = 0xffff;
+  appDataReq.dstAddr = 1-APP_ADDR;
   appDataReq.dstEndpoint = APP_ENDPOINT;
   appDataReq.srcEndpoint = APP_ENDPOINT;
   appDataReq.options = NWK_OPT_ENABLE_SECURITY;
@@ -111,13 +110,12 @@ static void appSendData(void)
   appDataReq.size = appUartBufferPtr;
   appDataReq.confirm = appDataConf;
   NWK_DataReq(&appDataReq);
-  ledToggle(0);
 
   appUartBufferPtr = 0;
   appDataReqBusy = true;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void HAL_UartBytesReceived(uint16_t bytes)
 {
@@ -131,9 +129,12 @@ void HAL_UartBytesReceived(uint16_t bytes)
     if (appUartBufferPtr < sizeof(appUartBuffer))
       appUartBuffer[appUartBufferPtr++] = byte;
   }
+
+  SYS_TimerStop(&appTimer);
+  SYS_TimerStart(&appTimer);
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void appTimerHandler(SYS_Timer_t *timer)
 {
@@ -141,44 +142,38 @@ static void appTimerHandler(SYS_Timer_t *timer)
   (void)timer;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static bool appDataInd(NWK_DataInd_t *ind)
 {
   for (uint8_t i = 0; i < ind->size; i++)
     HAL_UartWriteByte(ind->data[i]);
-  ledToggle(0);
   return true;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void appInit(void)
 {
   NWK_SetAddr(APP_ADDR);
   NWK_SetPanId(APP_PANID);
   PHY_SetChannel(APP_CHANNEL);
+#ifdef PHY_AT86RF212
+  PHY_SetBand(APP_BAND);
+  PHY_SetModulation(APP_MODULATION);
+#endif
   PHY_SetRxState(true);
+
   NWK_OpenEndpoint(APP_ENDPOINT, appDataInd);
 
-  // Enable RCB_BB RS232 level converter
-  #if defined(PLATFORM_RCB128RFA1)
-    DDRD = (1 << 4) | (1 << 6) | (1 << 7);
-    PORTD = (0 << 4) | (1 << 6) | (1 << 7);
-  #endif
-
-  #if defined(PLATFORM_RCB231)
-    DDRC = (1 << 4) | (1 << 6) | (1 << 7);
-    PORTC = (0 << 4) | (1 << 6) | (1 << 7);
-  #endif
+  HAL_BoardInit();
 
   appTimer.interval = APP_FLUSH_TIMER_INTERVAL;
-  appTimer.mode = SYS_TIMER_PERIODIC_MODE;
+  appTimer.mode = SYS_TIMER_INTERVAL_MODE;
   appTimer.handler = appTimerHandler;
-  SYS_TimerStart(&appTimer);
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void APP_TaskHandler(void)
 {
@@ -198,14 +193,12 @@ static void APP_TaskHandler(void)
   }
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 int main(void)
 {
-  CLKPR = (1<<CLKPCE);
-  CLKPR = (1<<CLKPS0);
   SYS_Init();
-  HAL_UartInit(57600);
+  HAL_UartInit(38400);
 
   while (1)
   {

@@ -408,7 +408,7 @@
           <state>$PROJ_DIR$/../../../phy/at86rf212/inc</state>
           <state>$PROJ_DIR$/../../../nwk/inc</state>
           <state>$PROJ_DIR$/../../../sys/inc</state>
-          <state>$PROJ_DIR$/../../../service/inc</state>
+          <state>$PROJ_DIR$/../../../hal/drivers/atxmega128b1</state>
           <state>$PROJ_DIR$/..</state>
         </option>
         <option>
@@ -1413,7 +1413,7 @@
           <state>$PROJ_DIR$/../../../phy/at86rf212/inc</state>
           <state>$PROJ_DIR$/../../../nwk/inc</state>
           <state>$PROJ_DIR$/../../../sys/inc</state>
-          <state>$PROJ_DIR$/../../../service/inc</state>
+          <state>$PROJ_DIR$/../../../hal/drivers/atxmega128b1</state>
           <state>$PROJ_DIR$/..</state>
         </option>
         <option>
@@ -2013,13 +2013,13 @@
     </settings>
   </configuration>
   <file>
-    <name>$PROJ_DIR$/../otaInterface.c</name>
-  </file>
-  <file>
-    <name>$PROJ_DIR$/../leds.h</name>
-  </file>
-  <file>
     <name>$PROJ_DIR$/../config.h</name>
+  </file>
+  <file>
+    <name>$PROJ_DIR$/../commands.c</name>
+  </file>
+  <file>
+    <name>$PROJ_DIR$/../commands.h</name>
   </file>
   <file>
     <name>$PROJ_DIR$/../WSNDemo.c</name>
@@ -2083,6 +2083,30 @@
     <group>
       <name>hal</name>
       <group>
+        <name>drivers</name>
+        <group>
+          <name>atxmega128b1</name>
+          <file>
+            <name>$PROJ_DIR$/../../../hal/drivers/atxmega128b1/halUart.h</name>
+          </file>
+          <file>
+            <name>$PROJ_DIR$/../../../hal/drivers/atxmega128b1/halBoard.h</name>
+          </file>
+          <file>
+            <name>$PROJ_DIR$/../../../hal/drivers/atxmega128b1/halUart.c</name>
+          </file>
+          <file>
+            <name>$PROJ_DIR$/../../../hal/drivers/atxmega128b1/halLed.h</name>
+          </file>
+          <file>
+            <name>$PROJ_DIR$/../../../hal/drivers/atxmega128b1/halSleep.h</name>
+          </file>
+          <file>
+            <name>$PROJ_DIR$/../../../hal/drivers/atxmega128b1/halSleep.c</name>
+          </file>
+        </group>
+      </group>
+      <group>
         <name>atxmega128b1</name>
         <group>
           <name>src</name>
@@ -2090,13 +2114,7 @@
             <name>$PROJ_DIR$/../../../hal/atxmega128b1/src/halTimer.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$/../../../hal/atxmega128b1/src/halSleep.c</name>
-          </file>
-          <file>
             <name>$PROJ_DIR$/../../../hal/atxmega128b1/src/hal.c</name>
-          </file>
-          <file>
-            <name>$PROJ_DIR$/../../../hal/atxmega128b1/src/halUart.c</name>
           </file>
           <file>
             <name>$PROJ_DIR$/../../../hal/atxmega128b1/src/halPhy.c</name>
@@ -2105,42 +2123,18 @@
         <group>
           <name>inc</name>
           <file>
-            <name>$PROJ_DIR$/../../../hal/atxmega128b1/inc/halSleep.h</name>
-          </file>
-          <file>
-            <name>$PROJ_DIR$/../../../hal/atxmega128b1/inc/hal.h</name>
+            <name>$PROJ_DIR$/../../../hal/atxmega128b1/inc/halTimer.h</name>
           </file>
           <file>
             <name>$PROJ_DIR$/../../../hal/atxmega128b1/inc/halPhy.h</name>
           </file>
           <file>
-            <name>$PROJ_DIR$/../../../hal/atxmega128b1/inc/halUart.h</name>
-          </file>
-          <file>
             <name>$PROJ_DIR$/../../../hal/atxmega128b1/inc/halGpio.h</name>
           </file>
           <file>
-            <name>$PROJ_DIR$/../../../hal/atxmega128b1/inc/halTimer.h</name>
+            <name>$PROJ_DIR$/../../../hal/atxmega128b1/inc/hal.h</name>
           </file>
         </group>
-      </group>
-    </group>
-    <group>
-      <name>service</name>
-      <group>
-        <name>src</name>
-        <file>
-          <name>$PROJ_DIR$/../../../service/src/otaClient.c</name>
-        </file>
-      </group>
-      <group>
-        <name>inc</name>
-        <file>
-          <name>$PROJ_DIR$/../../../service/inc/otaCommon.h</name>
-        </file>
-        <file>
-          <name>$PROJ_DIR$/../../../service/inc/otaClient.h</name>
-        </file>
       </group>
     </group>
     <group>
@@ -2157,10 +2151,16 @@
           <name>$PROJ_DIR$/../../../nwk/src/nwkRoute.c</name>
         </file>
         <file>
+          <name>$PROJ_DIR$/../../../nwk/src/nwkRouteDiscovery.c</name>
+        </file>
+        <file>
           <name>$PROJ_DIR$/../../../nwk/src/nwkSecurity.c</name>
         </file>
         <file>
           <name>$PROJ_DIR$/../../../nwk/src/nwkFrame.c</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/src/nwkGroup.c</name>
         </file>
         <file>
           <name>$PROJ_DIR$/../../../nwk/src/nwkDataReq.c</name>
@@ -2172,10 +2172,34 @@
       <group>
         <name>inc</name>
         <file>
-          <name>$PROJ_DIR$/../../../nwk/inc/nwkPrivate.h</name>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkTx.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkCommand.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkGroup.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkRouteDiscovery.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkRoute.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkDataReq.h</name>
         </file>
         <file>
           <name>$PROJ_DIR$/../../../nwk/inc/nwk.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkSecurity.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkFrame.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkRx.h</name>
         </file>
       </group>
     </group>

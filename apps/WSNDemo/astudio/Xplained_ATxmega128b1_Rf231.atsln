@@ -1,14 +1,17 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
-# AvrStudio Solution File, Format Version 11.00
-Project("{57E53D1A-B2F5-44C7-BC14-8A7819FEE1A0}") = "Xplained_ATxmega128b1_Rf231", "Xplained_ATxmega128b1_Rf231.cproj", "{05DEC369-73B5-4E0F-951C-AAA3789D718F}"
+# Atmel Studio Solution File, Format Version 11.00
+Project("{C5950E3C-C3C9-1FDF-F6EF-19BD1CAE4E7C}") = "Xplained_ATxmega128b1_Rf231", "Xplained_ATxmega128b1_Rf231.cproj", "{20B64065-3EAE-B0CD-BE1E-512DCD07FF72}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Default|AVR = Default|AVR
+		Debug|AVR = Debug|AVR
+		Release|AVR = Release|AVR
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{05DEC369-73B5-4E0F-951C-AAA3789D718F}.Default|AVR.ActiveCfg = Debug|AVR
-		{05DEC369-73B5-4E0F-951C-AAA3789D718F}.Default|AVR.Build.0 = Debug|AVR
+		{20B64065-3EAE-B0CD-BE1E-512DCD07FF72}.Debug|AVR.ActiveCfg = Debug|AVR
+		{20B64065-3EAE-B0CD-BE1E-512DCD07FF72}.Debug|AVR.Build.0 = Debug|AVR
+		{20B64065-3EAE-B0CD-BE1E-512DCD07FF72}.Release|AVR.ActiveCfg = Release|AVR
+		{20B64065-3EAE-B0CD-BE1E-512DCD07FF72}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

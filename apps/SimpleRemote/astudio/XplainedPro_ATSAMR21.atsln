@@ -1,0 +1,19 @@
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Atmel Studio Solution File, Format Version 11.00
+Project("{910E24EC-8903-A498-5B0B-05A6F83551A8}") = "XplainedPro_ATSAMR21", "XplainedPro_ATSAMR21.cproj", "{88DC3ED8-6C03-DE85-2799-56B0332B98EA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM = Debug|ARM
+		Release|ARM = Release|ARM
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{88DC3ED8-6C03-DE85-2799-56B0332B98EA}.Debug|ARM.ActiveCfg = Debug|ARM
+		{88DC3ED8-6C03-DE85-2799-56B0332B98EA}.Debug|ARM.Build.0 = Debug|ARM
+		{88DC3ED8-6C03-DE85-2799-56B0332B98EA}.Release|ARM.ActiveCfg = Release|ARM
+		{88DC3ED8-6C03-DE85-2799-56B0332B98EA}.Release|ARM.Build.0 = Release|ARM
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

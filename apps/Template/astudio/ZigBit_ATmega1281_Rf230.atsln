@@ -1,14 +1,17 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
-# AvrStudio Solution File, Format Version 11.00
-Project("{E1C63875-4B5C-4BD6-B318-634E0DD12BCA}") = "ZigBit_ATmega1281_Rf230", "ZigBit_ATmega1281_Rf230.cproj", "{33E2A7F3-554B-4C69-A74C-5B255CFE1F71}"
+# Atmel Studio Solution File, Format Version 11.00
+Project("{1B5EEC73-DAC0-88DA-D3C2-4958824BF152}") = "ZigBit_ATmega1281_Rf230", "ZigBit_ATmega1281_Rf230.cproj", "{34A6F8A5-2F65-8E33-483D-18267A613052}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Default|AVR = Default|AVR
+		Debug|AVR = Debug|AVR
+		Release|AVR = Release|AVR
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{33E2A7F3-554B-4C69-A74C-5B255CFE1F71}.Default|AVR.ActiveCfg = Debug|AVR
-		{33E2A7F3-554B-4C69-A74C-5B255CFE1F71}.Default|AVR.Build.0 = Debug|AVR
+		{34A6F8A5-2F65-8E33-483D-18267A613052}.Debug|AVR.ActiveCfg = Debug|AVR
+		{34A6F8A5-2F65-8E33-483D-18267A613052}.Debug|AVR.Build.0 = Debug|AVR
+		{34A6F8A5-2F65-8E33-483D-18267A613052}.Release|AVR.ActiveCfg = Release|AVR
+		{34A6F8A5-2F65-8E33-483D-18267A613052}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

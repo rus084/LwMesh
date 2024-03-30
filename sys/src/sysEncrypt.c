@@ -3,7 +3,7 @@
  *
  * \brief System encryption routines implementation
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,10 +37,14 @@
  *
  * \asf_license_stop
  *
- * $Id: sysEncrypt.c 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: sysEncrypt.c 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
+/*- Includes ---------------------------------------------------------------*/
 #include <stdint.h>
 #include <string.h>
 #include "sysEncrypt.h"
@@ -49,34 +53,10 @@
 
 #ifdef NWK_ENABLE_SECURITY
 
-/*****************************************************************************
-*****************************************************************************/
-#if SYS_SECURITY_MODE == 1
-static void swEncryptReq(uint32_t *text, uint32_t *key);
-#endif
-
-/*****************************************************************************
-*****************************************************************************/
-void SYS_EncryptReq(uint8_t *text, uint8_t *key)
-{
-#if SYS_SECURITY_MODE == 0
-  PHY_EncryptReq(text, key);
-#elif SYS_SECURITY_MODE == 1
-  swEncryptReq((uint32_t *)text, (uint32_t *)key);
-#endif
-}
-
-#if SYS_SECURITY_MODE == 0
-/*****************************************************************************
-*****************************************************************************/
-void PHY_EncryptConf(void)
-{
-  SYS_EncryptConf();
-}
-#endif
+/*- Implementations --------------------------------------------------------*/
 
 #if SYS_SECURITY_MODE == 1
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void xtea(uint32_t text[2], uint32_t const key[4])
 {
@@ -94,18 +74,24 @@ static void xtea(uint32_t text[2], uint32_t const key[4])
   text[0] = t0;
   text[1] = t1;
 }
+#endif
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
-static void swEncryptReq(uint32_t *text, uint32_t *key)
+void SYS_EncryptReq(uint8_t *text, uint8_t *key)
 {
+#if SYS_SECURITY_MODE == 0
+  PHY_EncryptReq(text, key);
+
+#elif SYS_SECURITY_MODE == 1
   xtea(&text[0], key);
   text[2] ^= text[0];
   text[3] ^= text[1];
   xtea(&text[2], key);
 
+#endif
+
   SYS_EncryptConf();
 }
-#endif
 
 #endif // NWK_ENABLE_SECURITY

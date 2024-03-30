@@ -3,7 +3,7 @@
  *
  * \brief ATxmega128b1 HAL implementation
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,19 +37,21 @@
  *
  * \asf_license_stop
  *
- * $Id: hal.c 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: hal.c 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
+/*- Includes ---------------------------------------------------------------*/
 #include "hal.h"
 #include "halPhy.h"
 #include "halTimer.h"
 
-/*****************************************************************************
-*****************************************************************************/
-#define CONFIGURATION_CHANGE_PROTECTION  do { CCP = 0xd8; } while (0)
+/*- Implementations --------------------------------------------------------*/
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void halSetSystemFrequency(void)
 {
@@ -58,21 +60,21 @@ static void halSetSystemFrequency(void)
   OSC.PLLCTRL = OSC_PLLSRC_RC2M_gc | OSC_PLLFAC3_bm;
   OSC.CTRL |= OSC_PLLEN_bm;
   while (0 == (OSC.STATUS & OSC_PLLRDY_bm));
-  CONFIGURATION_CHANGE_PROTECTION;
+  CCP = CCP_IOREG_gc;
   CLK.PSCTRL = CLK_PSADIV0_bm | CLK_PSADIV1_bm;
 
 #elif F_CPU == 8000000
   OSC.PLLCTRL = OSC_PLLSRC_RC2M_gc | OSC_PLLFAC3_bm;
   OSC.CTRL |= OSC_PLLEN_bm;
   while (0 == (OSC.STATUS & OSC_PLLRDY_bm));
-  CONFIGURATION_CHANGE_PROTECTION;
+  CCP = CCP_IOREG_gc;
   CLK.PSCTRL = CLK_PSADIV0_bm;
 
 #elif F_CPU == 12000000
   OSC.PLLCTRL = OSC_PLLSRC_RC2M_gc | OSC_PLLFAC3_bm | OSC_PLLFAC2_bm;
   OSC.CTRL |= OSC_PLLEN_bm;
   while (0 == (OSC.STATUS & OSC_PLLRDY_bm));
-  CONFIGURATION_CHANGE_PROTECTION;
+  CCP = CCP_IOREG_gc;
   CLK.PSCTRL = CLK_PSADIV0_bm;
 
 #elif F_CPU == 16000000
@@ -89,23 +91,23 @@ static void halSetSystemFrequency(void)
   #error Unsuppoerted F_CPU
 #endif
 
-  CONFIGURATION_CHANGE_PROTECTION;
+  CCP = CCP_IOREG_gc;
   CLK.CTRL = CLK_SCLKSEL2_bm;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void HAL_Init(void)
 {
   halSetSystemFrequency();
-  PMIC.CTRL = PMIC_HILVLEN_bm | PMIC_LOLVLEN_bm | PMIC_RREN_bm;
+  PMIC.CTRL = PMIC_HILVLEN_bm | PMIC_MEDLVLEN_bm| PMIC_LOLVLEN_bm;
   SYS_EnableInterrupts();
 
   HAL_TimerInit();
   halPhyInit();
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void HAL_Delay(uint8_t us)
 {

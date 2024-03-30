@@ -3,7 +3,7 @@
  *
  * \brief System encryption routines interface
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,18 +37,21 @@
  *
  * \asf_license_stop
  *
- * $Id: sysEncrypt.h 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: sysEncrypt.h 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
 #ifndef _SYS_ENCRYPT_H_
 #define _SYS_ENCRYPT_H_
 
+/*- Includes ---------------------------------------------------------------*/
 #include <stdint.h>
 #include <stdbool.h>
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Prototypes -------------------------------------------------------------*/
 void SYS_EncryptReq(uint8_t *text, uint8_t *key);
 void SYS_EncryptConf(void);
 

@@ -3,7 +3,7 @@
  *
  * \brief ATmega1281 PHY interface
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,20 +37,24 @@
  *
  * \asf_license_stop
  *
- * $Id: halPhy.h 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: halPhy.h 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
 #ifndef _HAL_PHY_H_
 #define _HAL_PHY_H_
 
+/*- Includes ---------------------------------------------------------------*/
 #include <stdint.h>
 #include "hal.h"
 #include "halGpio.h"
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Definitions ------------------------------------------------------------*/
 #if defined(PLATFORM_ZIGBIT)
+  // ZigBit ATZB-24-xxx
   HAL_GPIO_PIN(PHY_RST,    A, 7);
   HAL_GPIO_PIN(PHY_IRQ,    E, 5);
   HAL_GPIO_PIN(PHY_SLP_TR, B, 4);
@@ -59,6 +63,7 @@
   HAL_GPIO_PIN(PHY_MOSI,   B, 2);
   HAL_GPIO_PIN(PHY_SCK,    B, 1);
 #elif defined(PLATFORM_RCB231)
+  // RCB231
   HAL_GPIO_PIN(PHY_RST,    B, 5);
   HAL_GPIO_PIN(PHY_IRQ,    D, 0);
   HAL_GPIO_PIN(PHY_SLP_TR, B, 4);
@@ -68,13 +73,14 @@
   HAL_GPIO_PIN(PHY_SCK,    B, 1);
 #endif
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Prototypes -------------------------------------------------------------*/
 uint8_t HAL_PhySpiWriteByte(uint8_t value);
 void HAL_PhyReset(void);
 void halPhyInit(void);
 
-/*****************************************************************************
+/*- Implementations --------------------------------------------------------*/
+
+/*************************************************************************//**
 *****************************************************************************/
 INLINE uint8_t HAL_PhySpiWriteByteInline(uint8_t value)
 {
@@ -83,28 +89,28 @@ INLINE uint8_t HAL_PhySpiWriteByteInline(uint8_t value)
   return SPDR;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 INLINE void HAL_PhySpiSelect(void)
 {
   HAL_GPIO_PHY_CS_clr();
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 INLINE void HAL_PhySpiDeselect(void)
 {
   HAL_GPIO_PHY_CS_set();
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 INLINE void HAL_PhySlpTrSet(void)
 {
   HAL_GPIO_PHY_SLP_TR_set();
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 INLINE void HAL_PhySlpTrClear(void)
 {
@@ -112,4 +118,3 @@ INLINE void HAL_PhySlpTrClear(void)
 }
 
 #endif // _HAL_PHY_H_
-

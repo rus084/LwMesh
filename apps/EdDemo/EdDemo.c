@@ -3,7 +3,7 @@
  *
  * \brief Energy Detection Demo application implementation
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,10 +37,14 @@
  *
  * \asf_license_stop
  *
- * $Id: EdDemo.c 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: EdDemo.c 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
+/*- Includes ---------------------------------------------------------------*/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -49,28 +53,26 @@
 #include "phy.h"
 #include "sys.h"
 #include "nwk.h"
-#include "halUart.h"
 #include "sysTimer.h"
+#include "halBoard.h"
+#include "halUart.h"
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Types ------------------------------------------------------------------*/
 typedef enum AppState_t
 {
   APP_STATE_INITIAL,
-  APP_STATE_START_ED,
-  APP_STATE_WAIT_ED_CONF,
-  APP_STATE_NEXT_CHANNEL,
+  APP_STATE_MEASURE_ED,
   APP_STATE_WAIT_SCAN_TIMER,
 } AppState_t;
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Variables --------------------------------------------------------------*/
 static AppState_t appState = APP_STATE_INITIAL;
-static uint8_t channel;
-static uint8_t edValue[APP_LAST_CHANNEL - APP_FIRST_CHANNEL + 1];
+static uint8_t appEdValue[APP_LAST_CHANNEL - APP_FIRST_CHANNEL + 1];
 static SYS_Timer_t appScanTimer;
 
-/*****************************************************************************
+/*- Implementations --------------------------------------------------------*/
+
+/*************************************************************************//**
 *****************************************************************************/
 void HAL_UartBytesReceived(uint16_t bytes)
 {
@@ -78,15 +80,15 @@ void HAL_UartBytesReceived(uint16_t bytes)
     HAL_UartReadByte();
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void appPrintEdValues(void)
 {
   char hex[] = "0123456789abcdef";
 
-  for (uint8_t i = 0; i < sizeof(edValue); i++)
+  for (uint8_t i = 0; i < sizeof(appEdValue); i++)
   {
-    uint8_t v = edValue[i] - PHY_RSSI_BASE_VAL;
+    uint8_t v = appEdValue[i] - PHY_RSSI_BASE_VAL;
     HAL_UartWriteByte(hex[(v >> 4) & 0x0f]);
     HAL_UartWriteByte(hex[v & 0x0f]);
     HAL_UartWriteByte(' ');
@@ -96,45 +98,31 @@ static void appPrintEdValues(void)
   HAL_UartWriteByte('\n');
 }
 
-/*****************************************************************************
-*****************************************************************************/
-void PHY_EdConf(int8_t ed)
-{
-  edValue[channel - APP_FIRST_CHANNEL] = ed;
-  appState = APP_STATE_NEXT_CHANNEL;
-}
-
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void appScanTimerHandler(SYS_Timer_t *timer)
 {
-  appState = APP_STATE_START_ED;
+  appState = APP_STATE_MEASURE_ED;
   (void)timer;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void appInit(void)
 {
-  // Enable RCB_BB RS232 level converter
-  #ifdef PLATFORM_RCB128RFA1
-    DDRD = (1 << 4) | (1 << 6) | (1 << 7);
-    PORTD = (0 << 4) | (1 << 6) | (1 << 7);
-  #endif
+  HAL_BoardInit();
 
-  #ifdef PLATFORM_RCB231
-    DDRC = (1 << 4) | (1 << 6) | (1 << 7);
-    PORTC = (0 << 4) | (1 << 6) | (1 << 7);
-  #endif
+  PHY_SetRxState(true);
 
   appScanTimer.interval = APP_SCAN_INTERVAL;
-  appScanTimer.mode = SYS_TIMER_INTERVAL_MODE;
+  appScanTimer.mode = SYS_TIMER_PERIODIC_MODE;
   appScanTimer.handler = appScanTimerHandler;
+  SYS_TimerStart(&appScanTimer);
 
-  appState = APP_STATE_START_ED;
+  appState = APP_STATE_MEASURE_ED;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void APP_TaskHandler(void)
 {
@@ -145,29 +133,17 @@ static void APP_TaskHandler(void)
       appInit();
     } break;
 
-    case APP_STATE_START_ED:
+    case APP_STATE_MEASURE_ED:
     {
-      channel = APP_FIRST_CHANNEL;
-      PHY_SetChannel(channel);
-      PHY_EdReq();
-      appState = APP_STATE_WAIT_ED_CONF;
-    } break;
+      for (uint8_t i = 0; i < sizeof(appEdValue); i++)
+      {
+        PHY_SetChannel(APP_FIRST_CHANNEL + i);
+        appEdValue[i] = PHY_EdReq();
+      }
 
-    case APP_STATE_NEXT_CHANNEL:
-    {
-      if (APP_LAST_CHANNEL == channel)
-      {
-        appPrintEdValues();
-        SYS_TimerStart(&appScanTimer);
-        appState = APP_STATE_WAIT_SCAN_TIMER;
-      }
-      else
-      {
-        channel++;
-        PHY_SetChannel(channel);
-        PHY_EdReq();
-        appState = APP_STATE_WAIT_ED_CONF;
-      }
+      appPrintEdValues();
+
+      appState = APP_STATE_WAIT_SCAN_TIMER;
     } break;
 
     default:
@@ -175,7 +151,7 @@ static void APP_TaskHandler(void)
   }
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 int main(void)
 {

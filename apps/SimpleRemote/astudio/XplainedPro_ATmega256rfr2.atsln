@@ -1,0 +1,19 @@
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Atmel Studio Solution File, Format Version 11.00
+Project("{E90E90E6-6CBF-254B-E1C8-6D6B612768E6}") = "XplainedPro_ATmega256rfr2", "XplainedPro_ATmega256rfr2.cproj", "{4D0620D7-1334-ACDE-3AFF-2E5C3D7C71CB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|AVR = Debug|AVR
+		Release|AVR = Release|AVR
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4D0620D7-1334-ACDE-3AFF-2E5C3D7C71CB}.Debug|AVR.ActiveCfg = Debug|AVR
+		{4D0620D7-1334-ACDE-3AFF-2E5C3D7C71CB}.Debug|AVR.Build.0 = Debug|AVR
+		{4D0620D7-1334-ACDE-3AFF-2E5C3D7C71CB}.Release|AVR.ActiveCfg = Release|AVR
+		{4D0620D7-1334-ACDE-3AFF-2E5C3D7C71CB}.Release|AVR.Build.0 = Release|AVR
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -3,7 +3,7 @@
  *
  * \brief ATmega1281 HAL implementation
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,27 +37,37 @@
  *
  * \asf_license_stop
  *
- * $Id: hal.c 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: hal.c 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
+/*- Includes ---------------------------------------------------------------*/
 #include "hal.h"
 #include "halPhy.h"
 #include "halTimer.h"
 
-/*****************************************************************************
+/*- Implementations --------------------------------------------------------*/
+
+/*************************************************************************//**
 *****************************************************************************/
 void HAL_Init(void)
 {
   MCUSR = 0;
   wdt_disable();
+
+  CLKPR = 1 << CLKPCE;
+  CLKPR = 0;
+
   SYS_EnableInterrupts();
 
   HAL_TimerInit();
   halPhyInit();
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void HAL_Delay(uint8_t us)
 {

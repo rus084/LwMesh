@@ -3,7 +3,7 @@
  *
  * \brief EdDemo application and stack configuration
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,24 +37,25 @@
  *
  * \asf_license_stop
  *
- * $Id: config.h 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: config.h 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Definitions ------------------------------------------------------------*/
 #define APP_FIRST_CHANNEL                   11
 #define APP_LAST_CHANNEL                    26
-#define APP_SCAN_INTERVAL                   1000
+#define APP_SCAN_INTERVAL                   500
 
-#define PHY_ENABLE_ENERGY_DETECTION
-
-#define HAL_ENABLE_UART
 #define HAL_UART_CHANNEL                    1
 #define HAL_UART_RX_FIFO_SIZE               1
 #define HAL_UART_TX_FIFO_SIZE               100
+
+#define PHY_ENABLE_ENERGY_DETECTION
 
 #endif // _CONFIG_H_

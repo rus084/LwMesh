@@ -3,7 +3,7 @@
  *
  * \brief Main system routines interface
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,20 +37,23 @@
  *
  * \asf_license_stop
  *
- * $Id: sys.h 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: sys.h 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
 #ifndef _SYS_H_
 #define _SYS_H_
 
+/*- Includes ---------------------------------------------------------------*/
 #include "sysConfig.h"
 #include "phy.h"
 #include "nwk.h"
 #include "hal.h"
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Prototypes -------------------------------------------------------------*/
 void SYS_Init(void);
 void SYS_TaskHandler(void);
 

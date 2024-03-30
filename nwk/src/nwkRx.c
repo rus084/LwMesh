@@ -3,7 +3,7 @@
  *
  * \brief Receive routines implementation
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,81 +37,81 @@
  *
  * \asf_license_stop
  *
- * $Id: nwkRx.c 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: nwkRx.c 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
+/*- Includes ---------------------------------------------------------------*/
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include "phy.h"
-#include "nwk.h"
-#include "nwkPrivate.h"
+#include "sysConfig.h"
 #include "sysTimer.h"
+#include "nwk.h"
+#include "nwkTx.h"
+#include "nwkFrame.h"
+#include "nwkGroup.h"
+#include "nwkRoute.h"
+#include "nwkCommand.h"
+#include "nwkSecurity.h"
+#include "nwkRouteDiscovery.h"
 
-/*****************************************************************************
-*****************************************************************************/
-#define NWK_RX_DUPLICATE_REJECTION_TIMER_INTERVAL   20 // ms
+/*- Definitions ------------------------------------------------------------*/
+#define NWK_RX_DUPLICATE_REJECTION_TIMER_INTERVAL   100 // ms
 #define DUPLICATE_REJECTION_TTL \
             ((NWK_DUPLICATE_REJECTION_TTL / NWK_RX_DUPLICATE_REJECTION_TIMER_INTERVAL) + 1)
 #define NWK_SERVICE_ENDPOINT_ID    0
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Types ------------------------------------------------------------------*/
 enum
 {
-  NWK_RX_STATE_RECEIVED      = 0x20,
-  NWK_RX_STATE_DECRYPT       = 0x21,
-  NWK_RX_STATE_INDICATE      = 0x22,
-  NWK_RX_STATE_ROUTE         = 0x23,
-  NWK_RX_STATE_FINISH        = 0x24,
+  NWK_RX_STATE_RECEIVED = 0x20,
+  NWK_RX_STATE_DECRYPT  = 0x21,
+  NWK_RX_STATE_INDICATE = 0x22,
+  NWK_RX_STATE_ROUTE    = 0x23,
+  NWK_RX_STATE_FINISH   = 0x24,
 };
 
-typedef struct NwkDuplicateRejectionRecord_t
+typedef struct NwkDuplicateRejectionEntry_t
 {
-  uint16_t   src;
-  uint8_t    seq;
-  uint16_t   ttl;
-} NwkDuplicateRejectionRecord_t;
+  uint16_t src;
+  uint8_t  seq;
+  uint8_t  mask;
+  uint8_t  ttl;
+} NwkDuplicateRejectionEntry_t;
 
-/*****************************************************************************
-*****************************************************************************/
-static void nwkRxSendAckConf(NwkFrame_t *frame);
+/*- Prototypes -------------------------------------------------------------*/
 static void nwkRxDuplicateRejectionTimerHandler(SYS_Timer_t *timer);
-static bool nwkRxSeriveDataInd(NWK_DataInd_t *ind);
+static bool nwkRxServiceDataInd(NWK_DataInd_t *ind);
 
-/*****************************************************************************
-*****************************************************************************/
-static NwkDuplicateRejectionRecord_t nwkRxDuplicateRejectionTable[NWK_DUPLICATE_REJECTION_TABLE_SIZE];
-static uint8_t nwkRxActiveFrames;
+/*- Variables --------------------------------------------------------------*/
+static NwkDuplicateRejectionEntry_t nwkRxDuplicateRejectionTable[NWK_DUPLICATE_REJECTION_TABLE_SIZE];
 static uint8_t nwkRxAckControl;
 static SYS_Timer_t nwkRxDuplicateRejectionTimer;
 
-/*****************************************************************************
-*****************************************************************************/
-void NWK_SetAckControl(uint8_t control)
-{
-  nwkRxAckControl = control;
-}
+/*- Implementations --------------------------------------------------------*/
 
-/*****************************************************************************
+/*************************************************************************//**
+  @brief Initializes the Rx module
 *****************************************************************************/
 void nwkRxInit(void)
 {
   for (uint8_t i = 0; i < NWK_DUPLICATE_REJECTION_TABLE_SIZE; i++)
     nwkRxDuplicateRejectionTable[i].ttl = 0;
 
-  nwkRxActiveFrames = 0;
-
   nwkRxDuplicateRejectionTimer.interval = NWK_RX_DUPLICATE_REJECTION_TIMER_INTERVAL;
   nwkRxDuplicateRejectionTimer.mode = SYS_TIMER_INTERVAL_MODE;
   nwkRxDuplicateRejectionTimer.handler = nwkRxDuplicateRejectionTimerHandler;
 
-  NWK_OpenEndpoint(NWK_SERVICE_ENDPOINT_ID, nwkRxSeriveDataInd);
+  NWK_OpenEndpoint(NWK_SERVICE_ENDPOINT_ID, nwkRxServiceDataInd);
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void PHY_DataInd(PHY_DataInd_t *ind)
 {
@@ -121,59 +121,51 @@ void PHY_DataInd(PHY_DataInd_t *ind)
       ind->size < sizeof(NwkFrameHeader_t))
     return;
 
-  if (NULL == (frame = nwkFrameAlloc(ind->size - sizeof(NwkFrameHeader_t))))
+  if (NULL == (frame = nwkFrameAlloc()))
     return;
 
   frame->state = NWK_RX_STATE_RECEIVED;
+  frame->size = ind->size;
   frame->rx.lqi = ind->lqi;
   frame->rx.rssi = ind->rssi;
-
-  memcpy((uint8_t *)&frame->data, ind->data, ind->size);
-
-  ++nwkRxActiveFrames;
+  memcpy(frame->data, ind->data, ind->size);
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void nwkRxSendAck(NwkFrame_t *frame)
 {
   NwkFrame_t *ack;
-  NwkAckCommand_t *command;
+  NwkCommandAck_t *command;
 
-  if (NULL == (ack = nwkFrameAlloc(sizeof(NwkAckCommand_t))))
+  if (NULL == (ack = nwkFrameAlloc()))
     return;
 
   nwkFrameCommandInit(ack);
 
-  ack->tx.confirm = nwkRxSendAckConf;
+  ack->size += sizeof(NwkCommandAck_t);
+  ack->tx.confirm = NULL;
 
-  ack->data.header.nwkDstAddr = frame->data.header.nwkSrcAddr;
+  ack->header.nwkFcf.security = frame->header.nwkFcf.security;
+  ack->header.nwkDstAddr = frame->header.nwkSrcAddr;
 
-  command = (NwkAckCommand_t *)ack->data.payload;
-
+  command = (NwkCommandAck_t *)ack->payload;
   command->id = NWK_COMMAND_ACK;
   command->control = nwkRxAckControl;
-  command->seq = frame->data.header.nwkSeq;
+  command->seq = frame->header.nwkSeq;
 
   nwkTxFrame(ack);
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
-static void nwkRxSendAckConf(NwkFrame_t *frame)
+void NWK_SetAckControl(uint8_t control)
 {
-  nwkFrameFree(frame);
-}
-
-/*****************************************************************************
-*****************************************************************************/
-bool nwkRxBusy(void)
-{
-  return nwkRxActiveFrames > 0;
+  nwkRxAckControl = control;
 }
 
 #ifdef NWK_ENABLE_SECURITY
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void nwkRxDecryptConf(NwkFrame_t *frame, bool status)
 {
@@ -184,7 +176,7 @@ void nwkRxDecryptConf(NwkFrame_t *frame, bool status)
 }
 #endif
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void nwkRxDuplicateRejectionTimerHandler(SYS_Timer_t *timer)
 {
@@ -203,117 +195,143 @@ static void nwkRxDuplicateRejectionTimerHandler(SYS_Timer_t *timer)
     SYS_TimerStart(timer);
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static bool nwkRxRejectDuplicate(NwkFrameHeader_t *header)
 {
-  int8_t free = -1;
+  NwkDuplicateRejectionEntry_t *entry;
+  NwkDuplicateRejectionEntry_t *freeEntry = NULL;
 
   for (uint8_t i = 0; i < NWK_DUPLICATE_REJECTION_TABLE_SIZE; i++)
   {
-    if (nwkRxDuplicateRejectionTable[i].ttl)
-    {
-      if (header->nwkSrcAddr == nwkRxDuplicateRejectionTable[i].src)
-      {
-        int8_t diff = (int8_t)header->nwkSeq - nwkRxDuplicateRejectionTable[i].seq;
+    entry = &nwkRxDuplicateRejectionTable[i];
 
-        if (diff > 0)
+    if (entry->ttl && header->nwkSrcAddr == entry->src)
+    {
+      uint8_t diff = (int8_t)entry->seq - header->nwkSeq;
+
+      if (diff < 8)
+      {
+        if (entry->mask & (1 << diff))
         {
-          nwkRxDuplicateRejectionTable[i].seq = header->nwkSeq;
-          nwkRxDuplicateRejectionTable[i].ttl = DUPLICATE_REJECTION_TTL;
-          return false;
-        }
-        else
-        {
-#ifdef NWK_ENABLE_ROUTING
+        #ifdef NWK_ENABLE_ROUTING
           if (nwkIb.addr == header->macDstAddr)
-            nwkRouteRemove(header->nwkDstAddr);
-#endif
+            nwkRouteRemove(header->nwkDstAddr, header->nwkFcf.multicast);
+        #endif
           return true;
         }
+
+        entry->mask |= (1 << diff);
+        return false;
+      }
+      else
+      {
+        uint8_t shift = -(int8_t)diff;
+
+        entry->seq = header->nwkSeq;
+        entry->mask = (entry->mask << shift) | 1;
+        entry->ttl = DUPLICATE_REJECTION_TTL;
+        return false;
       }
     }
-    else // ttl == 0
-    {
-      free = i;
-    }
+
+    if (0 == entry->ttl)
+      freeEntry = entry;
   }
 
-  if (-1 == free)
+  if (NULL == freeEntry)
     return true;
 
-  nwkRxDuplicateRejectionTable[free].src = header->nwkSrcAddr;
-  nwkRxDuplicateRejectionTable[free].seq = header->nwkSeq;
-  nwkRxDuplicateRejectionTable[free].ttl = DUPLICATE_REJECTION_TTL;
+  freeEntry->src = header->nwkSrcAddr;
+  freeEntry->seq = header->nwkSeq;
+  freeEntry->mask = 1;
+  freeEntry->ttl = DUPLICATE_REJECTION_TTL;
 
   SYS_TimerStart(&nwkRxDuplicateRejectionTimer);
 
   return false;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
-static bool nwkRxSeriveDataInd(NWK_DataInd_t *ind)
+static bool nwkRxServiceDataInd(NWK_DataInd_t *ind)
 {
-  uint8_t cmd = ind->data[0];
-
-  if (NWK_COMMAND_ACK == cmd)
-    nwkTxAckReceived(ind);
-#ifdef NWK_ENABLE_ROUTING
-  else if (NWK_COMMAND_ROUTE_ERROR == cmd)
-    nwkRouteErrorReceived(ind);
+#ifdef NWK_ENABLE_SECURE_COMMANDS
+  if (0 == (ind->options & NWK_IND_OPT_SECURED))
+    return false;
 #endif
-  else
+
+  if (ind->size < 1)
     return false;
 
-  return true;
+  switch (ind->data[0])
+  {
+    case NWK_COMMAND_ACK:
+      return nwkTxAckReceived(ind);
+
+#ifdef NWK_ENABLE_ROUTING
+    case NWK_COMMAND_ROUTE_ERROR:
+      return nwkRouteErrorReceived(ind);
+#endif
+
+#ifdef NWK_ENABLE_ROUTE_DISCOVERY
+    case NWK_COMMAND_ROUTE_REQUEST:
+      return nwkRouteDiscoveryRequestReceived(ind);
+
+    case NWK_COMMAND_ROUTE_REPLY:
+      return nwkRouteDiscoveryReplyReceived(ind);
+#endif
+
+    default:
+      return false;
+  }
 }
 
-/*****************************************************************************
-*****************************************************************************/
-static bool nwkRxIndicateFrame(NwkFrame_t *frame)
-{
-  NwkFrameHeader_t *header = &frame->data.header;
-  NWK_DataInd_t ind;
-
-  if (header->nwkDstEndpoint > NWK_MAX_ENDPOINTS_AMOUNT || 
-      NULL == nwkIb.endpoint[header->nwkDstEndpoint])
-    return false;
-
-  ind.srcAddr = header->nwkSrcAddr;
-  ind.srcEndpoint = header->nwkSrcEndpoint;
-  ind.dstEndpoint = header->nwkDstEndpoint;
-  ind.data = frame->data.payload;
-  ind.size = frame->size - sizeof(NwkFrameHeader_t);
-  ind.lqi = frame->rx.lqi;
-  ind.rssi = frame->rx.rssi;
-
-  ind.options  = (header->nwkFcf.ackRequest) ? NWK_IND_OPT_ACK_REQUESTED : 0;
-  ind.options |= (header->nwkFcf.securityEnabled) ? NWK_IND_OPT_SECURED : 0;
-  ind.options |= (header->nwkFcf.linkLocal) ? NWK_IND_OPT_LINK_LOCAL : 0;
-  ind.options |= (0xffff == header->nwkDstAddr) ? NWK_IND_OPT_BROADCAST : 0;
-  ind.options |= (header->nwkSrcAddr == header->macSrcAddr) ? NWK_IND_OPT_LOCAL : 0;
-  ind.options |= (0xffff == header->macDstPanId) ? NWK_IND_OPT_BROADCAST_PAN_ID : 0;
-
-  return nwkIb.endpoint[header->nwkDstEndpoint](&ind);
-}
-
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void nwkRxHandleReceivedFrame(NwkFrame_t *frame)
 {
-  NwkFrameHeader_t *header = &frame->data.header;
+  NwkFrameHeader_t *header = &frame->header;
 
   frame->state = NWK_RX_STATE_FINISH;
 
-  if ((0xffff == header->nwkDstAddr && header->nwkFcf.ackRequest) ||
-      (nwkIb.addr == header->nwkSrcAddr))
-    return;
-
 #ifndef NWK_ENABLE_SECURITY
-  if (header->nwkFcf.securityEnabled)
+  if (header->nwkFcf.security)
     return;
 #endif
+
+#ifdef NWK_ENABLE_MULTICAST
+  if (header->nwkFcf.multicast && header->nwkFcf.ackRequest)
+    return;
+#else
+  if (header->nwkFcf.multicast)
+    return;
+#endif
+
+  if (NWK_BROADCAST_PANID == header->macDstPanId)
+  {
+    if (nwkIb.addr == header->nwkDstAddr || NWK_BROADCAST_ADDR == header->nwkDstAddr)
+    {
+    #ifdef NWK_ENABLE_SECURITY
+      if (header->nwkFcf.security)
+        frame->state = NWK_RX_STATE_DECRYPT;
+      else
+    #endif
+        frame->state = NWK_RX_STATE_INDICATE;
+    }
+    return;
+  }
+
+#ifdef NWK_ENABLE_ADDRESS_FILTER
+  if (!NWK_FilterAddress(header->macSrcAddr, &frame->rx.lqi))
+    return;
+#endif
+
+  if (NWK_BROADCAST_ADDR == header->nwkDstAddr && header->nwkFcf.ackRequest)
+    return;
+
+  if (nwkIb.addr == header->nwkSrcAddr)
+    return;
 
 #ifdef NWK_ENABLE_ROUTING
   nwkRouteFrameReceived(frame);
@@ -322,38 +340,152 @@ static void nwkRxHandleReceivedFrame(NwkFrame_t *frame)
   if (nwkRxRejectDuplicate(header))
     return;
 
-  if (0xffff == header->macDstAddr && nwkIb.addr != header->nwkDstAddr &&
-      0xffff != header->macDstPanId && 0 == header->nwkFcf.linkLocal)
-    nwkTxBroadcastFrame(frame);
+#ifdef NWK_ENABLE_MULTICAST
+  if (header->nwkFcf.multicast)
+  {
+    NwkFrameMulticastHeader_t *mcHeader = (NwkFrameMulticastHeader_t *)frame->payload;
+    bool member = NWK_GroupIsMember(header->nwkDstAddr);
+    bool broadcast = false;
 
-  if (nwkIb.addr == header->nwkDstAddr || 0xffff == header->nwkDstAddr)
-  {
-#ifdef NWK_ENABLE_SECURITY
-    if (header->nwkFcf.securityEnabled)
-      frame->state = NWK_RX_STATE_DECRYPT;
+    if (NWK_BROADCAST_ADDR == header->macDstAddr)
+    {
+      if (member)
+      {
+        broadcast = mcHeader->memberRadius > 0;
+        mcHeader->memberRadius--;
+        mcHeader->nonMemberRadius = mcHeader->maxNonMemberRadius;
+      }
+      else
+      {
+        broadcast = mcHeader->nonMemberRadius > 0;
+        mcHeader->nonMemberRadius--;
+        mcHeader->memberRadius = mcHeader->maxMemberRadius;
+      }
+    }
     else
-#endif
-      frame->state = NWK_RX_STATE_INDICATE;
+    {
+      if (member)
+      {
+        broadcast = true;
+        header->nwkFcf.linkLocal = 1;
+      }
+    #ifdef NWK_ENABLE_ROUTING
+      else
+      {
+        frame->state = NWK_RX_STATE_ROUTE;
+      }
+    #endif
+    }
+
+    if (broadcast)
+      nwkTxBroadcastFrame(frame);
+
+    if (member)
+    {
+      frame->payload += sizeof(NwkFrameMulticastHeader_t);
+
+    #ifdef NWK_ENABLE_SECURITY
+      if (header->nwkFcf.security)
+        frame->state = NWK_RX_STATE_DECRYPT;
+      else
+    #endif
+        frame->state = NWK_RX_STATE_INDICATE;
+    }
   }
-#ifdef NWK_ENABLE_ROUTING
-  else if (nwkIb.addr == header->macDstAddr && 0xffff != header->macDstPanId)
+  else
+#endif // NWK_ENABLE_MULTICAST
   {
-    frame->state = NWK_RX_STATE_ROUTE;
+    if (NWK_BROADCAST_ADDR == header->macDstAddr && nwkIb.addr != header->nwkDstAddr &&
+        0 == header->nwkFcf.linkLocal)
+      nwkTxBroadcastFrame(frame);
+
+    if (nwkIb.addr == header->nwkDstAddr || NWK_BROADCAST_ADDR == header->nwkDstAddr)
+    {
+    #ifdef NWK_ENABLE_SECURITY
+      if (header->nwkFcf.security)
+        frame->state = NWK_RX_STATE_DECRYPT;
+      else
+    #endif
+        frame->state = NWK_RX_STATE_INDICATE;
+    }
+
+  #ifdef NWK_ENABLE_ROUTING
+    else if (nwkIb.addr == header->macDstAddr)
+    {
+      frame->state = NWK_RX_STATE_ROUTE;
+    }
+  #endif
   }
-#endif
 }
 
-/*****************************************************************************
+/*************************************************************************//**
+*****************************************************************************/
+static bool nwkRxIndicateFrame(NwkFrame_t *frame)
+{
+  NwkFrameHeader_t *header = &frame->header;
+  NWK_DataInd_t ind;
+
+  if (NULL == nwkIb.endpoint[header->nwkDstEndpoint])
+    return false;
+
+  ind.srcAddr = header->nwkSrcAddr;
+  ind.dstAddr = header->nwkDstAddr;
+  ind.srcEndpoint = header->nwkSrcEndpoint;
+  ind.dstEndpoint = header->nwkDstEndpoint;
+  ind.data = frame->payload;
+  ind.size = nwkFramePayloadSize(frame);
+  ind.lqi = frame->rx.lqi;
+  ind.rssi = frame->rx.rssi;
+
+  ind.options  = (header->nwkFcf.ackRequest) ? NWK_IND_OPT_ACK_REQUESTED : 0;
+  ind.options |= (header->nwkFcf.security) ? NWK_IND_OPT_SECURED : 0;
+  ind.options |= (header->nwkFcf.linkLocal) ? NWK_IND_OPT_LINK_LOCAL : 0;
+  ind.options |= (header->nwkFcf.multicast) ? NWK_IND_OPT_MULTICAST : 0;
+  ind.options |= (NWK_BROADCAST_ADDR == header->nwkDstAddr) ? NWK_IND_OPT_BROADCAST : 0;
+  ind.options |= (header->nwkSrcAddr == header->macSrcAddr) ? NWK_IND_OPT_LOCAL : 0;
+  ind.options |= (NWK_BROADCAST_PANID == header->macDstPanId) ? NWK_IND_OPT_BROADCAST_PAN_ID : 0;
+
+  return nwkIb.endpoint[header->nwkDstEndpoint](&ind);
+}
+
+/*************************************************************************//**
+*****************************************************************************/
+static void nwkRxHandleIndication(NwkFrame_t *frame)
+{
+  bool ack;
+
+  nwkRxAckControl = 0;
+  ack = nwkRxIndicateFrame(frame);
+  
+  if (0 == frame->header.nwkFcf.ackRequest)
+    ack = false;
+
+  if (NWK_BROADCAST_ADDR == frame->header.macDstAddr &&
+      nwkIb.addr == frame->header.nwkDstAddr &&
+      0 == frame->header.nwkFcf.multicast)
+    ack = true;
+
+  if (NWK_BROADCAST_PANID == frame->header.macDstPanId)
+    ack = false;
+
+  if (NWK_BROADCAST_ADDR == nwkIb.addr)
+    ack = false;
+
+  if (ack)
+    nwkRxSendAck(frame);
+
+  frame->state = NWK_RX_STATE_FINISH;
+}
+
+/*************************************************************************//**
+  @brief Rx Module task handler
 *****************************************************************************/
 void nwkRxTaskHandler(void)
 {
-  if (0 == nwkRxActiveFrames)
-    return;
+  NwkFrame_t *frame = NULL;
 
-  for (int i = 0; i < NWK_BUFFERS_AMOUNT; i++)
+  while (NULL != (frame = nwkFrameNext(frame)))
   {
-    NwkFrame_t *frame = nwkFrameByIndex(i);
-
     switch (frame->state)
     {
       case NWK_RX_STATE_RECEIVED:
@@ -370,31 +502,19 @@ void nwkRxTaskHandler(void)
 
       case NWK_RX_STATE_INDICATE:
       {
-        NwkFrameHeader_t *header = &frame->data.header;
-        bool ack, forceAck;
-
-        nwkRxAckControl = NWK_ACK_CONTROL_NONE;
-        ack = nwkRxIndicateFrame(frame);
-        forceAck = (0xffff == header->macDstAddr && nwkIb.addr == header->nwkDstAddr);
-
-        if ((header->nwkFcf.ackRequest && ack) || forceAck)
-          nwkRxSendAck(frame);
-
-        frame->state = NWK_RX_STATE_FINISH;
+        nwkRxHandleIndication(frame);
       } break;
 
 #ifdef NWK_ENABLE_ROUTING
       case NWK_RX_STATE_ROUTE:
       {
         nwkRouteFrame(frame);
-        --nwkRxActiveFrames;
       } break;
 #endif
 
       case NWK_RX_STATE_FINISH:
       {
         nwkFrameFree(frame);
-        --nwkRxActiveFrames;
       } break;
     }
   }

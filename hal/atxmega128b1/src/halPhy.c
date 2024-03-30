@@ -3,7 +3,7 @@
  *
  * \brief ATxmega128b1 PHY interface implementation
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,10 +37,14 @@
  *
  * \asf_license_stop
  *
- * $Id: halPhy.c 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: halPhy.c 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
+/*- Includes ---------------------------------------------------------------*/
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -48,14 +52,16 @@
 #include "hal.h"
 #include "phy.h"
 
-/*****************************************************************************
+/*- Implementations --------------------------------------------------------*/
+
+/*************************************************************************//**
 *****************************************************************************/
 uint8_t HAL_PhySpiWriteByte(uint8_t value)
 {
   return HAL_PhySpiWriteByteInline(value);
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void HAL_PhyReset(void)
 {
@@ -64,7 +70,7 @@ void HAL_PhyReset(void)
   HAL_GPIO_PHY_RST_set();
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void halPhyInit(void)
 {
@@ -85,17 +91,4 @@ void halPhyInit(void)
 #else
   #error Unsupported F_CPU
 #endif
-
-  PORTC.INT0MASK = (1 << 2);
-  PORTC.INTCTRL = PORT_INT0LVL_HI_gc;
-  PORTC.PIN2CTRL = (uint8_t)PORT_OPC_PULLDOWN_gc | PORT_ISC_RISING_gc;
 }
-
-/*****************************************************************************
-*****************************************************************************/
-#if defined(PLATFORM_XPLAINED)
-ISR(PORTC_INT0_vect)
-{
-  phyInterruptHandler();
-}
-#endif

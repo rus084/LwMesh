@@ -37,14 +37,14 @@ SRCS += \
   $(STACK_PATH)/hal/atmega1281/src/hal.c \
   $(STACK_PATH)/hal/atmega1281/src/halPhy.c \
   $(STACK_PATH)/hal/atmega1281/src/halTimer.c \
-  $(STACK_PATH)/hal/atmega1281/src/halSleep.c \
-  $(STACK_PATH)/hal/atmega1281/src/halUart.c \
   $(STACK_PATH)/phy/at86rf230/src/phy.c \
   $(STACK_PATH)/nwk/src/nwk.c \
   $(STACK_PATH)/nwk/src/nwkDataReq.c \
   $(STACK_PATH)/nwk/src/nwkSecurity.c \
   $(STACK_PATH)/nwk/src/nwkFrame.c \
+  $(STACK_PATH)/nwk/src/nwkGroup.c \
   $(STACK_PATH)/nwk/src/nwkRoute.c \
+  $(STACK_PATH)/nwk/src/nwkRouteDiscovery.c \
   $(STACK_PATH)/nwk/src/nwkRx.c \
   $(STACK_PATH)/nwk/src/nwkTx.c \
   $(STACK_PATH)/sys/src/sys.c \
@@ -78,7 +78,7 @@ $(CONFIG)/Template.bin: $(CONFIG)/Template.elf
 
 %.o:
 	@echo CC $@
-	@$(CC) $(CFLAGS) $(filter %$(subst .o,.c,$(notdir $@)), $(SRCS)) -c -o $@
+	@$(CC) $(CFLAGS) $(filter %/$(subst .o,.c,$(notdir $@)), $(SRCS)) -c -o $@
 
 directory:
 	@gmkdir -p $(CONFIG)

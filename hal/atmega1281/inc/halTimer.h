@@ -3,7 +3,7 @@
  *
  * \brief ATmega1281 timer interface
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,23 +37,26 @@
  *
  * \asf_license_stop
  *
- * $Id: halTimer.h 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: halTimer.h 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
 #ifndef _HAL_TIMER_H_
 #define _HAL_TIMER_H_
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Includes ---------------------------------------------------------------*/
+#include "sysTypes.h"
+
+/*- Definitions ------------------------------------------------------------*/
 #define HAL_TIMER_INTERVAL      10ul // ms
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Variables --------------------------------------------------------------*/
 extern volatile uint8_t halTimerIrqCount;
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Prototypes -------------------------------------------------------------*/
 void HAL_TimerInit(void);
 void HAL_TimerDelay(uint16_t us);
 

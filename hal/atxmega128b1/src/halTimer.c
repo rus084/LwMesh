@@ -3,7 +3,7 @@
  *
  * \brief ATxmega128b1 timer implementation
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,24 +37,27 @@
  *
  * \asf_license_stop
  *
- * $Id: halTimer.c 5242 2012-09-10 18:37:05Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: halTimer.c 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
+/*- Includes ---------------------------------------------------------------*/
 #include <stdint.h>
 #include "hal.h"
 #include "halTimer.h"
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Definitions ------------------------------------------------------------*/
 #define TIMER_PRESCALER     8
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Variables --------------------------------------------------------------*/
 volatile uint8_t halTimerIrqCount;
-static volatile uint8_t halTimerDelayInt;
 
-/*****************************************************************************
+/*- Implementations --------------------------------------------------------*/
+
+/*************************************************************************//**
 *****************************************************************************/
 void HAL_TimerInit(void)
 {
@@ -66,7 +69,7 @@ void HAL_TimerInit(void)
   TCC1.INTCTRLA = TC_OVFINTLVL_LO_gc;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void HAL_TimerDelay(uint16_t us)
 {
@@ -88,24 +91,15 @@ void HAL_TimerDelay(uint16_t us)
   if (TCC1.CCB > TCC1.PER)
     TCC1.CCB -= TCC1.PER;
 
-  halTimerDelayInt = 0;
-  TCC1.INTCTRLB = TC_CCBINTLVL_LO_gc;
-  while (0 == halTimerDelayInt);
-  TCC1.INTCTRLB = TC_CCBINTLVL_OFF_gc;
+  TCC1.INTFLAGS = TC1_CCBIF_bm;
+  while (0 == (TCC1.INTFLAGS & TC1_CCBIF_bm));
 
   PRAGMA(diag_default=Pa082);
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 ISR(TCC1_OVF_vect)
 {
   halTimerIrqCount++;
-}
-
-/*****************************************************************************
-*****************************************************************************/
-ISR(TCC1_CCB_vect)
-{
-  halTimerDelayInt = 1;
 }

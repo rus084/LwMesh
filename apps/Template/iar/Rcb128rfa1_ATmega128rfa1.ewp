@@ -246,7 +246,7 @@
         </option>
         <option>
           <name>CCDefines</name>
-          <state>PHY_ATMEGA128RFA1</state>
+          <state>PHY_ATMEGARFA1</state>
           <state>HAL_ATMEGA128RFA1</state>
           <state>PLATFORM_RCB128RFA1</state>
           <state>F_CPU=8000000</state>
@@ -405,7 +405,7 @@
         <option>
           <name>newCCIncludePaths</name>
           <state>$PROJ_DIR$/../../../hal/atmega128rfa1/inc</state>
-          <state>$PROJ_DIR$/../../../phy/atmega128rfa1/inc</state>
+          <state>$PROJ_DIR$/../../../phy/atmegarfa1/inc</state>
           <state>$PROJ_DIR$/../../../nwk/inc</state>
           <state>$PROJ_DIR$/../../../sys/inc</state>
           <state>$PROJ_DIR$/..</state>
@@ -1250,7 +1250,7 @@
         </option>
         <option>
           <name>CCDefines</name>
-          <state>PHY_ATMEGA128RFA1</state>
+          <state>PHY_ATMEGARFA1</state>
           <state>HAL_ATMEGA128RFA1</state>
           <state>PLATFORM_RCB128RFA1</state>
           <state>F_CPU=8000000</state>
@@ -1409,7 +1409,7 @@
         <option>
           <name>newCCIncludePaths</name>
           <state>$PROJ_DIR$/../../../hal/atmega128rfa1/inc</state>
-          <state>$PROJ_DIR$/../../../phy/atmega128rfa1/inc</state>
+          <state>$PROJ_DIR$/../../../phy/atmegarfa1/inc</state>
           <state>$PROJ_DIR$/../../../nwk/inc</state>
           <state>$PROJ_DIR$/../../../sys/inc</state>
           <state>$PROJ_DIR$/..</state>
@@ -2054,20 +2054,20 @@
     <group>
       <name>phy</name>
       <group>
-        <name>atmega128rfa1</name>
+        <name>atmegarfa1</name>
         <group>
           <name>src</name>
           <file>
-            <name>$PROJ_DIR$/../../../phy/atmega128rfa1/src/phy.c</name>
+            <name>$PROJ_DIR$/../../../phy/atmegarfa1/src/phy.c</name>
           </file>
         </group>
         <group>
           <name>inc</name>
           <file>
-            <name>$PROJ_DIR$/../../../phy/atmega128rfa1/inc/phy.h</name>
+            <name>$PROJ_DIR$/../../../phy/atmegarfa1/inc/phy.h</name>
           </file>
           <file>
-            <name>$PROJ_DIR$/../../../phy/atmega128rfa1/inc/atmega128rfa1.h</name>
+            <name>$PROJ_DIR$/../../../phy/atmegarfa1/inc/atmegarfa1.h</name>
           </file>
         </group>
       </group>
@@ -2079,13 +2079,7 @@
         <group>
           <name>src</name>
           <file>
-            <name>$PROJ_DIR$/../../../hal/atmega128rfa1/src/halSleep.c</name>
-          </file>
-          <file>
             <name>$PROJ_DIR$/../../../hal/atmega128rfa1/src/halTimer.c</name>
-          </file>
-          <file>
-            <name>$PROJ_DIR$/../../../hal/atmega128rfa1/src/halUart.c</name>
           </file>
           <file>
             <name>$PROJ_DIR$/../../../hal/atmega128rfa1/src/hal.c</name>
@@ -2100,13 +2094,7 @@
             <name>$PROJ_DIR$/../../../hal/atmega128rfa1/inc/halTimer.h</name>
           </file>
           <file>
-            <name>$PROJ_DIR$/../../../hal/atmega128rfa1/inc/halSleep.h</name>
-          </file>
-          <file>
             <name>$PROJ_DIR$/../../../hal/atmega128rfa1/inc/halGpio.h</name>
-          </file>
-          <file>
-            <name>$PROJ_DIR$/../../../hal/atmega128rfa1/inc/halUart.h</name>
           </file>
         </group>
       </group>
@@ -2125,10 +2113,16 @@
           <name>$PROJ_DIR$/../../../nwk/src/nwkRoute.c</name>
         </file>
         <file>
+          <name>$PROJ_DIR$/../../../nwk/src/nwkRouteDiscovery.c</name>
+        </file>
+        <file>
           <name>$PROJ_DIR$/../../../nwk/src/nwkSecurity.c</name>
         </file>
         <file>
           <name>$PROJ_DIR$/../../../nwk/src/nwkFrame.c</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/src/nwkGroup.c</name>
         </file>
         <file>
           <name>$PROJ_DIR$/../../../nwk/src/nwkDataReq.c</name>
@@ -2140,10 +2134,34 @@
       <group>
         <name>inc</name>
         <file>
-          <name>$PROJ_DIR$/../../../nwk/inc/nwkPrivate.h</name>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkTx.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkCommand.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkGroup.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkRouteDiscovery.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkRoute.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkDataReq.h</name>
         </file>
         <file>
           <name>$PROJ_DIR$/../../../nwk/inc/nwk.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkSecurity.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkFrame.h</name>
+        </file>
+        <file>
+          <name>$PROJ_DIR$/../../../nwk/inc/nwkRx.h</name>
         </file>
       </group>
     </group>

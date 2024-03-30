@@ -3,7 +3,7 @@
  *
  * \brief WSNDemo application implementation
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,79 +37,77 @@
  *
  * \asf_license_stop
  *
- * $Id: WSNDemo.c 5245 2012-09-10 20:07:02Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: WSNDemo.c 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
+/*- Includes ---------------------------------------------------------------*/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <util/delay.h>
 #include "config.h"
 #include "hal.h"
 #include "phy.h"
 #include "sys.h"
 #include "nwk.h"
+#include "nwkRoute.h"
+#include "nwkSecurity.h"
+#include "sysTimer.h"
 #include "halUart.h"
 #include "halSleep.h"
-#include "sysTimer.h"
-#include "leds.h"
+#include "halBoard.h"
+#include "halLed.h"
+#include "commands.h"
 
-#ifdef APP_ENABLE_OTA
-  #include "otaClient.h"
-#endif
-
-/*****************************************************************************
-*****************************************************************************/
-#if APP_ADDR == 0
-  #define APP_CAPTION     "Coordinator"
-  #define APP_NODE_TYPE   0
-  #define APP_COORDINATOR 1
-#elif APP_ADDR < 0x8000
-  #define APP_CAPTION     "Router"
-  #define APP_NODE_TYPE   1
-  #define APP_ROUTER      1
+/*- Definitions ------------------------------------------------------------*/
+#if defined(APP_COORDINATOR)
+  #define APP_NODE_TYPE     0
+#elif defined(APP_ROUTER)
+  #define APP_NODE_TYPE     1
 #else
-  #define APP_CAPTION     "End Device"
-  #define APP_NODE_TYPE   2
-  #define APP_ENDDEVICE   1
+  #define APP_NODE_TYPE     2
 #endif
 
-#define APP_CAPTION_SIZE  (sizeof(APP_CAPTION) - 1)
+#define APP_CAPTION_SIZE    (sizeof(APP_CAPTION) - 1)
+#define APP_COMMAND_PENDING 0x01
 
-#define LED_NETWORK       0
-#define LED_DATA          1
+#define APP_ENDPOINT        1
 
-/*****************************************************************************
-*****************************************************************************/
-typedef struct AppMessage_t
+#define APP_LED_NETWORK     0
+#define APP_LED_DATA        1
+
+/*- Types ------------------------------------------------------------------*/
+typedef struct PACK
 {
-  uint8_t     messageType;
-  uint8_t     nodeType;
-  uint64_t    extAddr;
-  uint16_t    shortAddr;
-  uint32_t    softVersion;
-  uint32_t    channelMask;
-  uint16_t    panId;
-  uint8_t     workingChannel;
-  uint16_t    parentShortAddr;
-  uint8_t     lqi;
-  int8_t      rssi;
+  uint8_t      commandId;
+  uint8_t      nodeType;
+  uint64_t     extAddr;
+  uint16_t     shortAddr;
+  uint32_t     softVersion;
+  uint32_t     channelMask;
+  uint16_t     panId;
+  uint8_t      workingChannel;
+  uint16_t     parentShortAddr;
+  uint8_t      lqi;
+  int8_t       rssi;
 
-  struct
+  struct PACK
   {
-    uint8_t   type;
-    uint8_t   size;
-    int32_t   battery;
-    int32_t   temperature;
-    int32_t   light;
+    uint8_t    type;
+    uint8_t    size;
+    int32_t    battery;
+    int32_t    temperature;
+    int32_t    light;
   } sensors;
 
-  struct
+  struct PACK
   {
-    uint8_t   type;
-    uint8_t   size;
-    char      text[APP_CAPTION_SIZE];
+    uint8_t    type;
+    uint8_t    size;
+    char       text[APP_CAPTION_SIZE];
   } caption;
 } AppMessage_t;
 
@@ -120,36 +118,41 @@ typedef enum AppState_t
   APP_STATE_WAIT_CONF,
   APP_STATE_SENDING_DONE,
   APP_STATE_WAIT_SEND_TIMER,
+  APP_STATE_WAIT_COMMAND_TIMER,
   APP_STATE_PREPARE_TO_SLEEP,
   APP_STATE_SLEEP,
   APP_STATE_WAKEUP,
 } AppState_t;
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Variables --------------------------------------------------------------*/
 static AppState_t appState = APP_STATE_INITIAL;
 
-#if APP_ROUTER || APP_ENDDEVICE
-static NWK_DataReq_t nwkDataReq;
+#if defined(APP_ROUTER) || defined(APP_ENDDEVICE)
+static NWK_DataReq_t appNwkDataReq;
 static SYS_Timer_t appNetworkStatusTimer;
+static SYS_Timer_t appCommandWaitTimer;
 static bool appNetworkStatus;
 #endif
 
-static AppMessage_t msg;
+static AppMessage_t appMsg;
 static SYS_Timer_t appDataSendingTimer;
 
-/*****************************************************************************
+/*- Implementations --------------------------------------------------------*/
+
+/*************************************************************************//**
 *****************************************************************************/
 void HAL_UartBytesReceived(uint16_t bytes)
 {
   for (uint16_t i = 0; i < bytes; i++)
-    HAL_UartReadByte();
-  ledToggle(2);
+  {
+    uint8_t byte = HAL_UartReadByte();
+    APP_CommandsByteReceived(byte);
+  }
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
-static void appSendMessage(uint8_t *data, uint8_t size)
+static void appUartSendMessage(uint8_t *data, uint8_t size)
 {
   uint8_t cs = 0;
 
@@ -174,22 +177,26 @@ static void appSendMessage(uint8_t *data, uint8_t size)
   HAL_UartWriteByte(cs);
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static bool appDataInd(NWK_DataInd_t *ind)
 {
   AppMessage_t *msg = (AppMessage_t *)ind->data;
 
-  ledToggle(LED_DATA);
+  HAL_LedToggle(APP_LED_DATA);
 
   msg->lqi = ind->lqi;
   msg->rssi = ind->rssi;
 
-  appSendMessage(ind->data, ind->size);
+  appUartSendMessage(ind->data, ind->size);
+
+  if (APP_CommandsPending(ind->srcAddr))
+    NWK_SetAckControl(APP_COMMAND_PENDING);
+
   return true;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void appDataSendingTimerHandler(SYS_Timer_t *timer)
 {
@@ -201,135 +208,132 @@ static void appDataSendingTimerHandler(SYS_Timer_t *timer)
   (void)timer;
 }
 
-#if APP_ROUTER || APP_ENDDEVICE
-/*****************************************************************************
+#if defined(APP_ROUTER) || defined(APP_ENDDEVICE)
+/*************************************************************************//**
 *****************************************************************************/
 static void appNetworkStatusTimerHandler(SYS_Timer_t *timer)
 {
-  ledToggle(LED_NETWORK);
+  HAL_LedToggle(APP_LED_NETWORK);
+  (void)timer;
+}
+
+/*************************************************************************//**
+*****************************************************************************/
+static void appCommandWaitTimerHandler(SYS_Timer_t *timer)
+{
+  appState = APP_STATE_SENDING_DONE;
   (void)timer;
 }
 #endif
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
-#if APP_ROUTER || APP_ENDDEVICE
+#if defined(APP_ROUTER) || defined(APP_ENDDEVICE)
 static void appDataConf(NWK_DataReq_t *req)
 {
-  ledOff(LED_DATA);
+  HAL_LedOff(APP_LED_DATA);
 
   if (NWK_SUCCESS_STATUS == req->status)
   {
     if (!appNetworkStatus)
     {
-      ledOn(LED_NETWORK);
+      HAL_LedOn(APP_LED_NETWORK);
       SYS_TimerStop(&appNetworkStatusTimer);
       appNetworkStatus = true;
     }
   }
   else
   {
-    msg.sensors.light++;
-
     if (appNetworkStatus)
     {
-      ledOff(LED_NETWORK);
+      HAL_LedOff(APP_LED_NETWORK);
       SYS_TimerStart(&appNetworkStatusTimer);
       appNetworkStatus = false;
     }
   }
 
-  appState = APP_STATE_SENDING_DONE;
+  if (APP_COMMAND_PENDING == req->control)
+  {
+    SYS_TimerStart(&appCommandWaitTimer);
+    appState = APP_STATE_WAIT_COMMAND_TIMER;
+  }
+  else
+  {
+    appState = APP_STATE_SENDING_DONE;
+  }
 }
 #endif
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void appSendData(void)
 {
 #ifdef NWK_ENABLE_ROUTING
-  msg.parentShortAddr = NWK_RouteNextHop(0);
+  appMsg.parentShortAddr = NWK_RouteNextHop(0, 0);
 #else
-  msg.parentShortAddr = 0;
+  appMsg.parentShortAddr = 0;
 #endif
 
-  msg.sensors.battery     = rand();
-  msg.sensors.temperature = rand() & 0x7f;
-//  msg.sensors.light       = rand() & 0xff;
+  appMsg.sensors.battery     = rand() & 0xffff;
+  appMsg.sensors.temperature = rand() & 0x7f;
+  appMsg.sensors.light       = rand() & 0xff;
 
-#if APP_COORDINATOR
-  appSendMessage((uint8_t *)&msg, sizeof(msg));
+#if defined(APP_COORDINATOR)
+  appUartSendMessage((uint8_t *)&appMsg, sizeof(appMsg));
   SYS_TimerStart(&appDataSendingTimer);
   appState = APP_STATE_WAIT_SEND_TIMER;
 #else
-  nwkDataReq.dstAddr = 0;
-  nwkDataReq.dstEndpoint = APP_ENDPOINT;
-  nwkDataReq.srcEndpoint = APP_ENDPOINT;
-  nwkDataReq.options = NWK_OPT_ACK_REQUEST | NWK_OPT_ENABLE_SECURITY;
-  nwkDataReq.data = (uint8_t *)&msg;
-  nwkDataReq.size = sizeof(msg);
-  nwkDataReq.confirm = appDataConf;
+  appNwkDataReq.dstAddr = 0;
+  appNwkDataReq.dstEndpoint = APP_ENDPOINT;
+  appNwkDataReq.srcEndpoint = APP_ENDPOINT;
+  appNwkDataReq.options = NWK_OPT_ACK_REQUEST | NWK_OPT_ENABLE_SECURITY;
+  appNwkDataReq.data = (uint8_t *)&appMsg;
+  appNwkDataReq.size = sizeof(appMsg);
+  appNwkDataReq.confirm = appDataConf;
 
-  ledOn(LED_DATA);
-  NWK_DataReq(&nwkDataReq);
+  HAL_LedOn(APP_LED_DATA);
+  NWK_DataReq(&appNwkDataReq);
 
   appState = APP_STATE_WAIT_CONF;
 #endif
 }
 
-#ifdef PHY_ENABLE_RANDOM_NUMBER_GENERATOR
-/*****************************************************************************
-*****************************************************************************/
-void PHY_RandomConf(uint16_t rnd)
-{
-  srand(rnd);
-}
-#endif
-
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void appInit(void)
 {
-  msg.messageType          = 1;
-  msg.nodeType             = APP_NODE_TYPE;
-  msg.extAddr              = APP_ADDR;
-  msg.shortAddr            = APP_ADDR;
-  msg.softVersion          = 0x01010100;
-  msg.channelMask          = (1L << APP_CHANNEL);
-  msg.panId                = APP_PANID;
-  msg.workingChannel       = APP_CHANNEL;
-  msg.parentShortAddr      = 0;
-  msg.lqi                  = 0;
-  msg.rssi                 = 0;
+  appMsg.commandId            = APP_COMMAND_ID_NETWORK_INFO;
+  appMsg.nodeType             = APP_NODE_TYPE;
+  appMsg.extAddr              = APP_ADDR;
+  appMsg.shortAddr            = APP_ADDR;
+  appMsg.softVersion          = 0x01010100;
+  appMsg.channelMask          = (1L << APP_CHANNEL);
+  appMsg.panId                = APP_PANID;
+  appMsg.workingChannel       = APP_CHANNEL;
+  appMsg.parentShortAddr      = 0;
+  appMsg.lqi                  = 0;
+  appMsg.rssi                 = 0;
 
-  msg.sensors.type        = 1;
-  msg.sensors.size        = sizeof(int32_t) * 3;
-  msg.sensors.battery     = 0;
-  msg.sensors.temperature = 0;
-  msg.sensors.light       = 0;
+  appMsg.sensors.type        = 1;
+  appMsg.sensors.size        = sizeof(int32_t) * 3;
+  appMsg.sensors.battery     = 0;
+  appMsg.sensors.temperature = 0;
+  appMsg.sensors.light       = 0;
 
-  msg.caption.type         = 32;
-  msg.caption.size         = APP_CAPTION_SIZE;
-  memcpy(msg.caption.text, APP_CAPTION, APP_CAPTION_SIZE);
+  appMsg.caption.type         = 32;
+  appMsg.caption.size         = APP_CAPTION_SIZE;
+  memcpy(appMsg.caption.text, APP_CAPTION, APP_CAPTION_SIZE);
 
-#if APP_COORDINATOR
-  // Enable RCB_BB RS232 level converter
-  #if defined(PLATFORM_RCB128RFA1)
-    DDRD = (1 << 4) | (1 << 6) | (1 << 7);
-    PORTD = (0 << 4) | (1 << 6) | (1 << 7);
-  #endif
-
-  #if defined(PLATFORM_RCB231)
-    DDRC = (1 << 4) | (1 << 6) | (1 << 7);
-    PORTC = (0 << 4) | (1 << 6) | (1 << 7);
-  #endif
-#endif
-
-  ledsInit();
+  HAL_BoardInit();
+  HAL_LedInit();
 
   NWK_SetAddr(APP_ADDR);
   NWK_SetPanId(APP_PANID);
   PHY_SetChannel(APP_CHANNEL);
+#ifdef PHY_AT86RF212
+  PHY_SetBand(APP_BAND);
+  PHY_SetModulation(APP_MODULATION);
+#endif
   PHY_SetRxState(true);
 
 #ifdef NWK_ENABLE_SECURITY
@@ -342,25 +346,30 @@ static void appInit(void)
   appDataSendingTimer.mode = SYS_TIMER_INTERVAL_MODE;
   appDataSendingTimer.handler = appDataSendingTimerHandler;
 
-#if APP_ROUTER || APP_ENDDEVICE
+#if defined(APP_ROUTER) || defined(APP_ENDDEVICE)
   appNetworkStatus = false;
   appNetworkStatusTimer.interval = 500;
   appNetworkStatusTimer.mode = SYS_TIMER_PERIODIC_MODE;
   appNetworkStatusTimer.handler = appNetworkStatusTimerHandler;
   SYS_TimerStart(&appNetworkStatusTimer);
+
+  appCommandWaitTimer.interval = NWK_ACK_WAIT_TIME;
+  appCommandWaitTimer.mode = SYS_TIMER_INTERVAL_MODE;
+  appCommandWaitTimer.handler = appCommandWaitTimerHandler;
 #else
-  ledOn(LED_NETWORK);
+  HAL_LedOn(APP_LED_NETWORK);
 #endif
 
 #ifdef PHY_ENABLE_RANDOM_NUMBER_GENERATOR
-  PHY_RandomReq();
+  srand(PHY_RandomReq());
 #endif
 
+  APP_CommandsInit();
+
   appState = APP_STATE_SEND;
-  SCCR0 &= ~(1<<SCCKSEL);
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void APP_TaskHandler(void)
 {
@@ -373,15 +382,12 @@ static void APP_TaskHandler(void)
 
     case APP_STATE_SEND:
     {
-#if APP_ENDDEVICE
-      ledToggle(0);
-#endif
       appSendData();
     } break;
 
     case APP_STATE_SENDING_DONE:
     {
-#if APP_ENDDEVICE
+#if defined(APP_ENDDEVICE)
       appState = APP_STATE_PREPARE_TO_SLEEP;
 #else
       SYS_TimerStart(&appDataSendingTimer);
@@ -400,12 +406,8 @@ static void APP_TaskHandler(void)
 
     case APP_STATE_SLEEP:
     {
-      ledsClose();
-
-      PHY_SetRxState(false);
-
-      //HAL_Sleep(APP_SENDING_INTERVAL);
-      _delay_ms(500);
+      HAL_LedClose();
+      HAL_Sleep(APP_SENDING_INTERVAL);
       appState = APP_STATE_WAKEUP;
     } break;
 
@@ -413,10 +415,8 @@ static void APP_TaskHandler(void)
     {
       NWK_WakeupReq();
 
-      ledsInit();
-      ledOn(LED_NETWORK);
-
-      PHY_SetRxState(true);
+      HAL_LedInit();
+      HAL_LedOn(APP_LED_NETWORK);
 
       appState = APP_STATE_SEND;
     } break;
@@ -426,25 +426,17 @@ static void APP_TaskHandler(void)
   }
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 int main(void)
 {
-  CLKPR = (1<<CLKPCE);
-  CLKPR = (1<<CLKPS0);
   SYS_Init();
   HAL_UartInit(38400);
-#ifdef APP_ENABLE_OTA
-  OTA_ClientInit();
-#endif
 
   while (1)
   {
     SYS_TaskHandler();
     HAL_UartTaskHandler();
-#ifdef APP_ENABLE_OTA
-    OTA_ClientTaskHandler();
-#endif
     APP_TaskHandler();
   }
 }

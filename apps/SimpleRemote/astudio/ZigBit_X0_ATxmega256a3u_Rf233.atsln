@@ -1,0 +1,19 @@
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Atmel Studio Solution File, Format Version 11.00
+Project("{9257A88A-2178-7385-8754-11EA77FCCF89}") = "ZigBit_X0_ATxmega256a3u_Rf233", "ZigBit_X0_ATxmega256a3u_Rf233.cproj", "{1B59D908-E25C-C3E8-9E84-C15E6E5A2089}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|AVR = Debug|AVR
+		Release|AVR = Release|AVR
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1B59D908-E25C-C3E8-9E84-C15E6E5A2089}.Debug|AVR.ActiveCfg = Debug|AVR
+		{1B59D908-E25C-C3E8-9E84-C15E6E5A2089}.Debug|AVR.Build.0 = Debug|AVR
+		{1B59D908-E25C-C3E8-9E84-C15E6E5A2089}.Release|AVR.ActiveCfg = Release|AVR
+		{1B59D908-E25C-C3E8-9E84-C15E6E5A2089}.Release|AVR.Build.0 = Release|AVR
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

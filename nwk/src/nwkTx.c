@@ -3,7 +3,7 @@
  *
  * \brief Transmit routines implementation
  *
- * Copyright (C) 2012 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2012-2014, Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -37,230 +37,269 @@
  *
  * \asf_license_stop
  *
- * $Id: nwkTx.c 5223 2012-09-10 16:47:17Z ataradov $
+ * Modification and other use of this code is subject to Atmel's Limited
+ * License Agreement (license.txt).
+ *
+ * $Id: nwkTx.c 9267 2014-03-18 21:46:19Z ataradov $
  *
  */
 
+/*- Includes ---------------------------------------------------------------*/
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include "phy.h"
-#include "nwk.h"
-#include "nwkPrivate.h"
+#include "sysConfig.h"
 #include "sysTimer.h"
+#include "nwk.h"
+#include "nwkTx.h"
+#include "nwkFrame.h"
+#include "nwkRoute.h"
+#include "nwkCommand.h"
+#include "nwkSecurity.h"
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Definitions ------------------------------------------------------------*/
 #define NWK_TX_ACK_WAIT_TIMER_INTERVAL    50 // ms
+#define NWK_TX_DELAY_TIMER_INTERVAL       10 // ms
+#define NWK_TX_DELAY_JITTER_MASK          0x07
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Types ------------------------------------------------------------------*/
 enum
 {
-  NWK_TX_STATE_ENCRYPT   = 0x10,
-  NWK_TX_STATE_SEND      = 0x11,
-  NWK_TX_STATE_WAIT_CONF = 0x12,
-  NWK_TX_STATE_SENT      = 0x13,
-  NWK_TX_STATE_WAIT_ACK  = 0x14,
-  NWK_TX_STATE_CONFIRM   = 0x15,
+  NWK_TX_STATE_ENCRYPT    = 0x10,
+  NWK_TX_STATE_WAIT_DELAY = 0x11,
+  NWK_TX_STATE_DELAY      = 0x12,
+  NWK_TX_STATE_SEND       = 0x13,
+  NWK_TX_STATE_WAIT_CONF  = 0x14,
+  NWK_TX_STATE_SENT       = 0x15,
+  NWK_TX_STATE_WAIT_ACK   = 0x16,
+  NWK_TX_STATE_CONFIRM    = 0x17,
 };
 
-/*****************************************************************************
-*****************************************************************************/
-static void nwkTxBroadcastConf(NwkFrame_t *frame);
+/*- Prototypes -------------------------------------------------------------*/
 static void nwkTxAckWaitTimerHandler(SYS_Timer_t *timer);
+static void nwkTxDelayTimerHandler(SYS_Timer_t *timer);
 
-/*****************************************************************************
-*****************************************************************************/
+/*- Variables --------------------------------------------------------------*/
 static NwkFrame_t *nwkTxPhyActiveFrame;
-static uint8_t nwkTxActiveFrames;
 static SYS_Timer_t nwkTxAckWaitTimer;
+static SYS_Timer_t nwkTxDelayTimer;
 
-/*****************************************************************************
+/*- Implementations --------------------------------------------------------*/
+
+/*************************************************************************//**
+  @brief Initializes the Tx module
 *****************************************************************************/
 void nwkTxInit(void)
 {
   nwkTxPhyActiveFrame = NULL;
-  nwkTxActiveFrames = 0;
 
   nwkTxAckWaitTimer.interval = NWK_TX_ACK_WAIT_TIMER_INTERVAL;
   nwkTxAckWaitTimer.mode = SYS_TIMER_INTERVAL_MODE;
   nwkTxAckWaitTimer.handler = nwkTxAckWaitTimerHandler;
+
+  nwkTxDelayTimer.interval = NWK_TX_DELAY_TIMER_INTERVAL;
+  nwkTxDelayTimer.mode = SYS_TIMER_INTERVAL_MODE;
+  nwkTxDelayTimer.handler = nwkTxDelayTimerHandler;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void nwkTxFrame(NwkFrame_t *frame)
 {
-  NwkFrameHeader_t *header = &frame->data.header;
+  NwkFrameHeader_t *header = &frame->header;
 
   if (frame->tx.control & NWK_TX_CONTROL_ROUTING)
   {
-    frame->state = NWK_TX_STATE_SEND;
+    frame->state = NWK_TX_STATE_DELAY;
   }
   else
   {
-#ifdef NWK_ENABLE_SECURITY
-    if (frame->data.header.nwkFcf.securityEnabled)
+  #ifdef NWK_ENABLE_SECURITY
+    if (header->nwkFcf.security)
       frame->state = NWK_TX_STATE_ENCRYPT;
     else
-#endif
-      frame->state = NWK_TX_STATE_SEND;
+  #endif
+      frame->state = NWK_TX_STATE_DELAY;
   }
 
   frame->tx.status = NWK_SUCCESS_STATUS;
 
   if (frame->tx.control & NWK_TX_CONTROL_BROADCAST_PAN_ID)
-    frame->data.header.macDstPanId = 0xffff;
+    header->macDstPanId = NWK_BROADCAST_PANID;
   else
-    frame->data.header.macDstPanId = nwkIb.panId;
+    header->macDstPanId = nwkIb.panId;
 
 #ifdef NWK_ENABLE_ROUTING
-  header->macDstAddr = nwkRouteNextHop(header->nwkDstAddr);
-#else
-  header->macDstAddr = header->nwkDstAddr;
+  if (0 == (frame->tx.control & NWK_TX_CONTROL_DIRECT_LINK) && 
+      0 == (frame->tx.control & NWK_TX_CONTROL_BROADCAST_PAN_ID))
+    nwkRoutePrepareTx(frame);
+  else
 #endif
+    header->macDstAddr = header->nwkDstAddr;
+
   header->macSrcAddr = nwkIb.addr;
   header->macSeq = ++nwkIb.macSeqNum;
 
-  if (0xffff == header->macDstAddr)
+  if (NWK_BROADCAST_ADDR == header->macDstAddr)
+  {
     header->macFcf = 0x8841;
+    frame->tx.timeout = (rand() & NWK_TX_DELAY_JITTER_MASK) + 1;
+  }
   else
+  {
     header->macFcf = 0x8861;
-
-  ++nwkTxActiveFrames;
+    frame->tx.timeout = 0;
+  }
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void nwkTxBroadcastFrame(NwkFrame_t *frame)
 {
   NwkFrame_t *newFrame;
 
-  if (NULL == (newFrame = nwkFrameAlloc(frame->size - sizeof(NwkFrameHeader_t))))
+  if (NULL == (newFrame = nwkFrameAlloc()))
     return;
 
-  newFrame->tx.confirm = nwkTxBroadcastConf;
-  memcpy((uint8_t *)&newFrame->data, (uint8_t *)&frame->data, frame->size);
-
-  newFrame->state = NWK_TX_STATE_SEND;
+  newFrame->state = NWK_TX_STATE_DELAY;
+  newFrame->size = frame->size;
   newFrame->tx.status = NWK_SUCCESS_STATUS;
+  newFrame->tx.timeout = (rand() & NWK_TX_DELAY_JITTER_MASK) + 1;
+  newFrame->tx.confirm = NULL;
+  memcpy(newFrame->data, frame->data, frame->size);
 
-  newFrame->data.header.macFcf = 0x8841;
-  newFrame->data.header.macDstAddr = 0xffff;
-  newFrame->data.header.macDstPanId = nwkIb.panId;
-  newFrame->data.header.macSrcAddr = nwkIb.addr;
-  newFrame->data.header.macSeq = ++nwkIb.macSeqNum;
-
-  ++nwkTxActiveFrames;
+  newFrame->header.macFcf = 0x8841;
+  newFrame->header.macDstAddr = NWK_BROADCAST_ADDR;
+  newFrame->header.macDstPanId = frame->header.macDstPanId;
+  newFrame->header.macSrcAddr = nwkIb.addr;
+  newFrame->header.macSeq = ++nwkIb.macSeqNum;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
-static void nwkTxBroadcastConf(NwkFrame_t *frame)
+bool nwkTxAckReceived(NWK_DataInd_t *ind)
 {
-  nwkFrameFree(frame);
-}
+  NwkCommandAck_t *command = (NwkCommandAck_t *)ind->data;
+  NwkFrame_t *frame = NULL;
 
-/*****************************************************************************
-*****************************************************************************/
-void nwkTxAckReceived(NWK_DataInd_t *ind)
-{
-  NwkAckCommand_t *command = (NwkAckCommand_t *)ind->data;
+  if (sizeof(NwkCommandAck_t) != ind->size)
+    return false;
 
-  if (0 == nwkTxActiveFrames)
-    return;
-
-  for (int i = 0; i < NWK_BUFFERS_AMOUNT; i++)
+  while (NULL != (frame = nwkFrameNext(frame)))
   {
-    NwkFrame_t *frame = nwkFrameByIndex(i);
-
-    if (NWK_TX_STATE_WAIT_ACK == frame->state && frame->data.header.nwkSeq == command->seq)
+    if (NWK_TX_STATE_WAIT_ACK == frame->state && frame->header.nwkSeq == command->seq)
     {
       frame->state = NWK_TX_STATE_CONFIRM;
       frame->tx.control = command->control;
-      return;
+      return true;
     }
   }
+
+  return false;
 }
 
-/*****************************************************************************
-*****************************************************************************/
-bool nwkTxBusy(void)
-{
-  return nwkTxActiveFrames > 0;
-}
-
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 static void nwkTxAckWaitTimerHandler(SYS_Timer_t *timer)
 {
-  if (0 == nwkTxActiveFrames)
-    return;
+  NwkFrame_t *frame = NULL;
+  bool restart = false;
 
-  for (int i = 0; i < NWK_BUFFERS_AMOUNT; i++)
+  while (NULL != (frame = nwkFrameNext(frame)))
   {
-    NwkFrame_t *frame = nwkFrameByIndex(i);
-
-    if (NWK_TX_STATE_WAIT_ACK == frame->state && 0 == --frame->tx.timeout)
+    if (NWK_TX_STATE_WAIT_ACK == frame->state)
     {
-      frame->state = NWK_TX_STATE_CONFIRM;
-      frame->tx.status = NWK_NO_ACK_STATUS;
+      restart = true;
+
+      if (0 == --frame->tx.timeout)
+        nwkTxConfirm(frame, NWK_NO_ACK_STATUS);
     }
   }
 
-  SYS_TimerStart(timer);
+  if (restart)
+    SYS_TimerStart(timer);
+}
+
+/*************************************************************************//**
+*****************************************************************************/
+void nwkTxConfirm(NwkFrame_t *frame, uint8_t status)
+{
+  frame->state = NWK_TX_STATE_CONFIRM;
+  frame->tx.status = status;
 }
 
 #ifdef NWK_ENABLE_SECURITY
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
 void nwkTxEncryptConf(NwkFrame_t *frame)
 {
-  frame->state = NWK_TX_STATE_SEND;
+  frame->state = NWK_TX_STATE_DELAY;
 }
 #endif
 
-/*****************************************************************************
+/*************************************************************************//**
 *****************************************************************************/
-static uint8_t convertPhyStatus(uint8_t status)
+static void nwkTxDelayTimerHandler(SYS_Timer_t *timer)
 {
-  if (TRAC_STATUS_SUCCESS == status ||
-      TRAC_STATUS_SUCCESS_DATA_PENDING == status ||
-      TRAC_STATUS_SUCCESS_WAIT_FOR_ACK == status)
-    return NWK_SUCCESS_STATUS;
+  NwkFrame_t *frame = NULL;
+  bool restart = false;
 
-  else if (TRAC_STATUS_CHANNEL_ACCESS_FAILURE == status)
-    return NWK_PHY_CHANNEL_ACCESS_FAILURE_STATUS;
+  while (NULL != (frame = nwkFrameNext(frame)))
+  {
+    if (NWK_TX_STATE_WAIT_DELAY == frame->state)
+    {
+      restart = true;
 
-  else if (TRAC_STATUS_NO_ACK == status)
-    return NWK_PHY_NO_ACK_STATUS;
+      if (0 == --frame->tx.timeout)
+        frame->state = NWK_TX_STATE_SEND;
+    }
+  }
 
-  else
-    return NWK_ERROR_STATUS;
+  if (restart)
+    SYS_TimerStart(timer);
 }
 
-/*****************************************************************************
+/*************************************************************************//**
+*****************************************************************************/
+static uint8_t nwkTxConvertPhyStatus(uint8_t status)
+{
+  switch (status)
+  {
+    case PHY_STATUS_SUCCESS:
+      return NWK_SUCCESS_STATUS;
+
+    case PHY_STATUS_CHANNEL_ACCESS_FAILURE:
+      return NWK_PHY_CHANNEL_ACCESS_FAILURE_STATUS;
+
+    case PHY_STATUS_NO_ACK:
+      return NWK_PHY_NO_ACK_STATUS;
+
+    default:
+      return NWK_ERROR_STATUS;
+  }
+}
+
+/*************************************************************************//**
 *****************************************************************************/
 void PHY_DataConf(uint8_t status)
 {
-  nwkTxPhyActiveFrame->tx.status = convertPhyStatus(status);
+  nwkTxPhyActiveFrame->tx.status = nwkTxConvertPhyStatus(status);
   nwkTxPhyActiveFrame->state = NWK_TX_STATE_SENT;
   nwkTxPhyActiveFrame = NULL;
+  nwkIb.lock--;
 }
 
-/*****************************************************************************
+/*************************************************************************//**
+  @brief Tx Module task handler
 *****************************************************************************/
 void nwkTxTaskHandler(void)
 {
-  if (0 == nwkTxActiveFrames)
-    return;
+  NwkFrame_t *frame = NULL;
 
-  for (int i = 0; i < NWK_BUFFERS_AMOUNT; i++)
+  while (NULL != (frame = nwkFrameNext(frame)))
   {
-    NwkFrame_t *frame = nwkFrameByIndex(i);
-
     switch (frame->state)
     {
 #ifdef NWK_ENABLE_SECURITY
@@ -270,13 +309,27 @@ void nwkTxTaskHandler(void)
       } break;
 #endif
 
+      case NWK_TX_STATE_DELAY:
+      {
+        if (frame->tx.timeout > 0)
+        {
+          frame->state = NWK_TX_STATE_WAIT_DELAY;
+          SYS_TimerStart(&nwkTxDelayTimer);
+        }
+        else
+        {
+          frame->state = NWK_TX_STATE_SEND;
+        }
+      } break;
+
       case NWK_TX_STATE_SEND:
       {
-        if (!PHY_Busy())
+        if (NULL == nwkTxPhyActiveFrame)
         {
           nwkTxPhyActiveFrame = frame;
           frame->state = NWK_TX_STATE_WAIT_CONF;
-          PHY_DataReq((uint8_t *)&frame->data, frame->size);
+          PHY_DataReq(frame->data, frame->size);
+          nwkIb.lock++;
         }
       } break;
 
@@ -287,8 +340,7 @@ void nwkTxTaskHandler(void)
       {
         if (NWK_SUCCESS_STATUS == frame->tx.status)
         {
-          if (frame->data.header.nwkSrcAddr == nwkIb.addr &&
-              frame->data.header.nwkFcf.ackRequest)
+          if (frame->header.nwkSrcAddr == nwkIb.addr && frame->header.nwkFcf.ackRequest)
           {
             frame->state = NWK_TX_STATE_WAIT_ACK;
             frame->tx.timeout = NWK_ACK_WAIT_TIME / NWK_TX_ACK_WAIT_TIMER_INTERVAL + 1;
@@ -313,8 +365,10 @@ void nwkTxTaskHandler(void)
 #ifdef NWK_ENABLE_ROUTING
         nwkRouteFrameSent(frame);
 #endif
-        frame->tx.confirm(frame);
-        --nwkTxActiveFrames;
+        if (NULL == frame->tx.confirm)
+          nwkFrameFree(frame);
+        else
+          frame->tx.confirm(frame);
       } break;
 
       default:

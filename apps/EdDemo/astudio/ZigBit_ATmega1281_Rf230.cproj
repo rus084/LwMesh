@@ -2,9 +2,9 @@
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectVersion>5.1</ProjectVersion>
-    <ToolchainName>com.Atmel.AVRGCC8</ToolchainName>
-    <ProjectGuid>{E9C9621D-4D28-444E-BE66-88E03F82C014}</ProjectGuid>
+    <ProjectVersion>6.1</ProjectVersion>
+    <ToolchainName>com.Atmel.AVRGCC8.C</ToolchainName>
+    <ProjectGuid>{50C18A9C-B25A-50D4-B062-D358558E51C2}</ProjectGuid>
     <avrdevice>ATmega1281</avrdevice>
     <avrdeviceseries>none</avrdeviceseries>
     <OutputType>Executable</OutputType>
@@ -13,7 +13,7 @@
     <OutputFileExtension>.elf</OutputFileExtension>
     <OutputDirectory>$(MSBuildProjectDirectory)\$(Configuration)</OutputDirectory>
     <AssemblyName>EdDemo</AssemblyName>
-    <Name>ATmega1281, Rf230</Name>
+    <Name>ZigBit_ATmega1281_Rf230</Name>
     <RootNamespace>EdDemo</RootNamespace>
     <ToolchainFlavour>Native</ToolchainFlavour>
     <AsfVersion>2.11.1</AsfVersion>
@@ -43,68 +43,90 @@
         </InterfaceProperties>
       </ToolOptions>
     </com_atmel_avrdbg_tool_jtagicemkii>
+    <KeepTimersRunning>true</KeepTimersRunning>
+    <OverrideVtor>false</OverrideVtor>
+    <CacheFlash>true</CacheFlash>
+    <ProgFlashFromRam>true</ProgFlashFromRam>
+    <RamSnippetAddress />
+    <UncachedRange />
+    <OverrideVtorValue />
+    <BootSegment>2</BootSegment>
+    <eraseonlaunchrule>1</eraseonlaunchrule>
+    <AsfFrameworkConfig>
+      <framework-data>
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.3.0" />
+        </dependencies>
+      </framework-data>
+    </AsfFrameworkConfig>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <ToolchainSettings>
-      <AvrGcc>
-        <avrgcc.compiler.general.SubroutinesFunctionPrologues>False</avrgcc.compiler.general.SubroutinesFunctionPrologues>
-        <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
-        <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
-        <avrgcc.compiler.symbols.DefSymbols>
-          <ListValues>
-            <Value>PHY_AT86RF230</Value>
-            <Value>HAL_ATMEGA1281</Value>
-            <Value>PLATFORM_ZIGBIT</Value>
-            <Value>F_CPU=8000000</Value>
-          </ListValues>
-        </avrgcc.compiler.symbols.DefSymbols>
-        <avrgcc.compiler.directories.IncludePaths>
-          <ListValues>
-            <Value>../../../../hal/atmega1281/inc</Value>
-            <Value>../../../../phy/at86rf230/inc</Value>
-            <Value>../../../../nwk/inc</Value>
-            <Value>../../../../sys/inc</Value>
-            <Value>../..</Value>
-          </ListValues>
-        </avrgcc.compiler.directories.IncludePaths>
-        <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
-        <avrgcc.compiler.optimization.OtherFlags>-fdata-sections</avrgcc.compiler.optimization.OtherFlags>
-        <avrgcc.compiler.optimization.PrepareFunctionsForGarbageCollection>True</avrgcc.compiler.optimization.PrepareFunctionsForGarbageCollection>
-        <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
-        <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
-        <avrgcc.compiler.optimization.DebugLevel>Maximum (-g3)</avrgcc.compiler.optimization.DebugLevel>
-        <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
-        <avrgcc.linker.optimization.GarbageCollectUnusedSections>True</avrgcc.linker.optimization.GarbageCollectUnusedSections>
-        <avrgcc.linker.miscellaneous.LinkerFlags></avrgcc.linker.miscellaneous.LinkerFlags>
-        <avrgcc.assembler.general.IncludePaths>
-          <ListValues>
-            <Value>../../../../hal/atmega1281/inc</Value>
-            <Value>../../../../phy/at86rf230/inc</Value>
-            <Value>../../../../nwk/inc</Value>
-            <Value>../../../../sys/inc</Value>
-            <Value>../..</Value>
-          </ListValues>
-        </avrgcc.assembler.general.IncludePaths>
-        <avrgcc.assembler.symbols.DefSymbols>
-          <ListValues>
-            <Value>PHY_AT86RF230</Value>
-            <Value>HAL_ATMEGA1281</Value>
-            <Value>PLATFORM_ZIGBIT</Value>
-            <Value>F_CPU=8000000</Value>
-          </ListValues>
-        </avrgcc.assembler.symbols.DefSymbols>
-        <avrgcc.assembler.debugging.DebugLevel>Maximum (-Wa,-g3)</avrgcc.assembler.debugging.DebugLevel>
-      </AvrGcc>
-    </ToolchainSettings>
     <OutputFileName>EdDemo</OutputFileName>
     <OutputFileExtension>.elf</OutputFileExtension>
-    <PostBuildEvent>avr-objcopy -O ihex -R .eeprom EdDemo.elf EdDemo.hex
-avr-objcopy -O binary -R .eeprom EdDemo.elf EdDemo.bin</PostBuildEvent>
+    <PostBuildEvent>"$(ToolchainDir)"\avr-objcopy -O binary -R .eeprom -R .fuse -R .lock -R .signature EdDemo.elf EdDemo.bin</PostBuildEvent>
+    <ToolchainSettings>
+      <AvrGcc>
+  <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
+  <avrgcc.common.outputfiles.lss>False</avrgcc.common.outputfiles.lss>
+  <avrgcc.common.outputfiles.eep>False</avrgcc.common.outputfiles.eep>
+  <avrgcc.common.outputfiles.srec>False</avrgcc.common.outputfiles.srec>
+  <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
+  <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
+  <avrgcc.compiler.symbols.DefSymbols>
+    <ListValues>
+            <Value>PHY_AT86RF230</Value>
+            <Value>HAL_ATMEGA1281</Value>
+            <Value>PLATFORM_ZIGBIT</Value>
+            <Value>F_CPU=8000000</Value>
+    </ListValues>
+  </avrgcc.compiler.symbols.DefSymbols>
+  <avrgcc.compiler.directories.IncludePaths>
+    <ListValues>
+            <Value>../../../../hal/atmega1281/inc</Value>
+            <Value>../../../../phy/at86rf230/inc</Value>
+            <Value>../../../../nwk/inc</Value>
+            <Value>../../../../sys/inc</Value>
+            <Value>../../../../hal/drivers/atmega1281</Value>
+            <Value>../..</Value>
+    </ListValues>
+  </avrgcc.compiler.directories.IncludePaths>
+  <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
+  <avrgcc.compiler.optimization.OtherFlags>-fdata-sections</avrgcc.compiler.optimization.OtherFlags>
+  <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
+  <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
+  <avrgcc.compiler.optimization.DebugLevel>Maximum (-g3)</avrgcc.compiler.optimization.DebugLevel>
+  <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
+  <avrgcc.linker.optimization.GarbageCollectUnusedSections>True</avrgcc.linker.optimization.GarbageCollectUnusedSections>
+  <avrgcc.linker.miscellaneous.LinkerFlags></avrgcc.linker.miscellaneous.LinkerFlags>
+  <avrgcc.assembler.general.IncludePaths>
+    <ListValues>
+            <Value>../../../../hal/atmega1281/inc</Value>
+            <Value>../../../../phy/at86rf230/inc</Value>
+            <Value>../../../../nwk/inc</Value>
+            <Value>../../../../sys/inc</Value>
+            <Value>../../../../hal/drivers/atmega1281</Value>
+            <Value>../..</Value>
+    </ListValues>
+  </avrgcc.assembler.general.IncludePaths>
+  <avrgcc.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcc.assembler.debugging.DebugLevel>
+</AvrGcc>
+    </ToolchainSettings>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <OutputFileName>EdDemo</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PostBuildEvent>"$(ToolchainDir)"\avr-objcopy -O binary -R .eeprom -R .fuse -R .lock -R .signature EdDemo.elf EdDemo.bin</PostBuildEvent>
     <ToolchainSettings>
-      <AvrGcc>
-        <avrgcc.compiler.general.SubroutinesFunctionPrologues>False</avrgcc.compiler.general.SubroutinesFunctionPrologues>
+      <AvrGcc xmlns="">
+        <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
+        <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
+        <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
+        <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
         <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
         <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
         <avrgcc.compiler.symbols.DefSymbols>
@@ -121,12 +143,12 @@ avr-objcopy -O binary -R .eeprom EdDemo.elf EdDemo.bin</PostBuildEvent>
             <Value>../../../../phy/at86rf230/inc</Value>
             <Value>../../../../nwk/inc</Value>
             <Value>../../../../sys/inc</Value>
+            <Value>../../../../hal/drivers/atmega1281</Value>
             <Value>../..</Value>
           </ListValues>
         </avrgcc.compiler.directories.IncludePaths>
         <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
         <avrgcc.compiler.optimization.OtherFlags>-fdata-sections</avrgcc.compiler.optimization.OtherFlags>
-        <avrgcc.compiler.optimization.PrepareFunctionsForGarbageCollection>True</avrgcc.compiler.optimization.PrepareFunctionsForGarbageCollection>
         <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
         <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
         <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
@@ -138,23 +160,12 @@ avr-objcopy -O binary -R .eeprom EdDemo.elf EdDemo.bin</PostBuildEvent>
             <Value>../../../../phy/at86rf230/inc</Value>
             <Value>../../../../nwk/inc</Value>
             <Value>../../../../sys/inc</Value>
+            <Value>../../../../hal/drivers/atmega1281</Value>
             <Value>../..</Value>
           </ListValues>
         </avrgcc.assembler.general.IncludePaths>
-        <avrgcc.assembler.symbols.DefSymbols>
-          <ListValues>
-            <Value>PHY_AT86RF230</Value>
-            <Value>HAL_ATMEGA1281</Value>
-            <Value>PLATFORM_ZIGBIT</Value>
-            <Value>F_CPU=8000000</Value>
-          </ListValues>
-        </avrgcc.assembler.symbols.DefSymbols>
       </AvrGcc>
     </ToolchainSettings>
-    <OutputFileName>EdDemo</OutputFileName>
-    <OutputFileExtension>.elf</OutputFileExtension>
-    <PostBuildEvent>avr-objcopy -O ihex -R .eeprom EdDemo.elf EdDemo.hex
-avr-objcopy -O binary -R .eeprom EdDemo.elf EdDemo.bin</PostBuildEvent>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\..\hal\atmega1281\inc\hal.h">
@@ -185,22 +196,6 @@ avr-objcopy -O binary -R .eeprom EdDemo.elf EdDemo.bin</PostBuildEvent>
       <SubType>compile</SubType>
       <Link>stack\hal\atmega1281\inc\halGpio.h</Link>
     </Compile>
-    <Compile Include="..\..\..\hal\atmega1281\inc\halSleep.h">
-      <SubType>compile</SubType>
-      <Link>stack\hal\atmega1281\inc\halSleep.h</Link>
-    </Compile>
-    <Compile Include="..\..\..\hal\atmega1281\src\halSleep.c">
-      <SubType>compile</SubType>
-      <Link>stack\hal\atmega1281\src\halSleep.c</Link>
-    </Compile>
-    <Compile Include="..\..\..\hal\atmega1281\inc\halUart.h">
-      <SubType>compile</SubType>
-      <Link>stack\hal\atmega1281\inc\halUart.h</Link>
-    </Compile>
-    <Compile Include="..\..\..\hal\atmega1281\src\halUart.c">
-      <SubType>compile</SubType>
-      <Link>stack\hal\atmega1281\src\halUart.c</Link>
-    </Compile>
     <Compile Include="..\..\..\phy\at86rf230\inc\phy.h">
       <SubType>compile</SubType>
       <Link>stack\phy\at86rf230\inc\phy.h</Link>
@@ -217,37 +212,77 @@ avr-objcopy -O binary -R .eeprom EdDemo.elf EdDemo.bin</PostBuildEvent>
       <SubType>compile</SubType>
       <Link>stack\nwk\inc\nwk.h</Link>
     </Compile>
-    <Compile Include="..\..\..\nwk\inc\nwkPrivate.h">
-      <SubType>compile</SubType>
-      <Link>stack\nwk\inc\nwkPrivate.h</Link>
-    </Compile>
     <Compile Include="..\..\..\nwk\src\nwk.c">
       <SubType>compile</SubType>
       <Link>stack\nwk\src\nwk.c</Link>
+    </Compile>
+    <Compile Include="..\..\..\nwk\inc\nwkDataReq.h">
+      <SubType>compile</SubType>
+      <Link>stack\nwk\inc\nwkDataReq.h</Link>
     </Compile>
     <Compile Include="..\..\..\nwk\src\nwkDataReq.c">
       <SubType>compile</SubType>
       <Link>stack\nwk\src\nwkDataReq.c</Link>
     </Compile>
+    <Compile Include="..\..\..\nwk\inc\nwkSecurity.h">
+      <SubType>compile</SubType>
+      <Link>stack\nwk\inc\nwkSecurity.h</Link>
+    </Compile>
     <Compile Include="..\..\..\nwk\src\nwkSecurity.c">
       <SubType>compile</SubType>
       <Link>stack\nwk\src\nwkSecurity.c</Link>
+    </Compile>
+    <Compile Include="..\..\..\nwk\inc\nwkFrame.h">
+      <SubType>compile</SubType>
+      <Link>stack\nwk\inc\nwkFrame.h</Link>
     </Compile>
     <Compile Include="..\..\..\nwk\src\nwkFrame.c">
       <SubType>compile</SubType>
       <Link>stack\nwk\src\nwkFrame.c</Link>
     </Compile>
+    <Compile Include="..\..\..\nwk\inc\nwkGroup.h">
+      <SubType>compile</SubType>
+      <Link>stack\nwk\inc\nwkGroup.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\nwk\src\nwkGroup.c">
+      <SubType>compile</SubType>
+      <Link>stack\nwk\src\nwkGroup.c</Link>
+    </Compile>
+    <Compile Include="..\..\..\nwk\inc\nwkRoute.h">
+      <SubType>compile</SubType>
+      <Link>stack\nwk\inc\nwkRoute.h</Link>
+    </Compile>
     <Compile Include="..\..\..\nwk\src\nwkRoute.c">
       <SubType>compile</SubType>
       <Link>stack\nwk\src\nwkRoute.c</Link>
+    </Compile>
+    <Compile Include="..\..\..\nwk\inc\nwkRouteDiscovery.h">
+      <SubType>compile</SubType>
+      <Link>stack\nwk\inc\nwkRouteDiscovery.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\nwk\src\nwkRouteDiscovery.c">
+      <SubType>compile</SubType>
+      <Link>stack\nwk\src\nwkRouteDiscovery.c</Link>
+    </Compile>
+    <Compile Include="..\..\..\nwk\inc\nwkRx.h">
+      <SubType>compile</SubType>
+      <Link>stack\nwk\inc\nwkRx.h</Link>
     </Compile>
     <Compile Include="..\..\..\nwk\src\nwkRx.c">
       <SubType>compile</SubType>
       <Link>stack\nwk\src\nwkRx.c</Link>
     </Compile>
+    <Compile Include="..\..\..\nwk\inc\nwkTx.h">
+      <SubType>compile</SubType>
+      <Link>stack\nwk\inc\nwkTx.h</Link>
+    </Compile>
     <Compile Include="..\..\..\nwk\src\nwkTx.c">
       <SubType>compile</SubType>
       <Link>stack\nwk\src\nwkTx.c</Link>
+    </Compile>
+    <Compile Include="..\..\..\nwk\inc\nwkCommand.h">
+      <SubType>compile</SubType>
+      <Link>stack\nwk\inc\nwkCommand.h</Link>
     </Compile>
     <Compile Include="..\..\..\sys\inc\sys.h">
       <SubType>compile</SubType>
@@ -281,13 +316,21 @@ avr-objcopy -O binary -R .eeprom EdDemo.elf EdDemo.bin</PostBuildEvent>
       <SubType>compile</SubType>
       <Link>stack\sys\src\sysEncrypt.c</Link>
     </Compile>
+    <Compile Include="..\..\..\hal\drivers\atmega1281\halBoard.h">
+      <SubType>compile</SubType>
+      <Link>stack\hal\drivers\atmega1281\halBoard.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\hal\drivers\atmega1281\halUart.h">
+      <SubType>compile</SubType>
+      <Link>stack\hal\drivers\atmega1281\halUart.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\hal\drivers\atmega1281\halUart.c">
+      <SubType>compile</SubType>
+      <Link>stack\hal\drivers\atmega1281\halUart.c</Link>
+    </Compile>
     <Compile Include="..\config.h">
       <SubType>compile</SubType>
       <Link>config.h</Link>
-    </Compile>
-    <Compile Include="..\leds.h">
-      <SubType>compile</SubType>
-      <Link>leds.h</Link>
     </Compile>
     <Compile Include="..\EdDemo.c">
       <SubType>compile</SubType>
@@ -303,6 +346,7 @@ avr-objcopy -O binary -R .eeprom EdDemo.elf EdDemo.bin</PostBuildEvent>
     <Folder Include="stack\nwk\src" />
     <Folder Include="stack\sys\inc" />
     <Folder Include="stack\sys\src" />
+    <Folder Include="stack\hal\drivers\atmega1281" />
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>
